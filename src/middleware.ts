@@ -24,5 +24,5 @@ export default NextAuth(authConfig).auth((/* req */) => {
 });
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/portal/:path*"],
+  // matcher: ["/dashboard/:path*", "/portal/:path*"],
 };
