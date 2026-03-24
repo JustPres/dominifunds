@@ -36,6 +36,23 @@ async function main() {
     },
   });
 
+  // Add Demo BSIT FundType
+  const existingFund = await prisma.fundType.findFirst({
+    where: { name: "Annual Org Fee", orgId: "BSIT" },
+  });
+
+  if (!existingFund) {
+    await prisma.fundType.create({
+      data: {
+        name: "Annual Org Fee",
+        description: "Mandatory collection for the school year",
+        amount: 500,
+        required: true,
+        orgId: "BSIT",
+      },
+    });
+  }
+
   console.log("Seeding finished.");
   console.log("--- Demo Accounts Created ---");
   console.log("OFFICER:");
