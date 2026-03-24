@@ -1,13 +1,17 @@
 import { Member } from "@/lib/api/members";
 import { Icon } from "@iconify/react";
+import AddMemberDialog from "./AddMemberDialog";
 
 export default function MembersTable({ members }: { members: Member[] }) {
   if (members.length === 0) {
     return (
-      <div className="flex min-h-[400px] flex-col items-center justify-center rounded-2xl border border-[#F0ECEC] bg-white p-8 text-center shadow-sm">
-        <Icon icon="solar:users-group-two-rounded-bold-duotone" className="mb-4 h-16 w-16 text-[#F0ECEC]" />
-        <h3 className="font-display text-xl font-bold text-[#343434]">No members found</h3>
-        <p className="mt-2 text-sm text-[#625f5f]">Try adjusting your search filters or add a new member.</p>
+      <div className="flex min-h-[400px] flex-col items-center justify-center rounded-2xl border border-[#F0ECEC] border-dashed bg-white p-8 text-center shadow-sm">
+        <Icon icon="solar:users-group-two-rounded-bold-duotone" className="mb-4 h-16 w-16 text-[#625f5f]/40" />
+        <h3 className="font-display text-xl font-bold text-[#343434]">No members added yet.</h3>
+        <p className="mt-2 text-sm text-[#625f5f]">Start by adding members to track their funds.</p>
+        <div className="mt-6">
+          <AddMemberDialog />
+        </div>
       </div>
     );
   }

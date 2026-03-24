@@ -4,16 +4,20 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getTransactions } from "@/lib/api/transactions";
 import { Icon } from "@iconify/react";
+import { useSession } from "next-auth/react";
 import TransactionsTable from "@/components/transactions/TransactionsTable";
 import RecordPaymentDialog from "@/components/transactions/RecordPaymentDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function TransactionsClient() {
   const [activeFundId, setActiveFundId] = useState<string>("ALL");
+  const { data: session } = useSession();
+  const orgId = session?.user?.orgId;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: getTransactions,
+    queryKey: ["transactions", orgId],
+    queryFn: () => getTransactions(orgId as string),
+    enabled: !!orgId,
   });
 
   const filteredTransactions = data?.transactions.filter((tx) => {
@@ -118,6 +122,14 @@ export default function TransactionsClient() {
             <Skeleton className="h-16 w-full" />
             <Skeleton className="h-16 w-full" />
           </div>
+        </div>
+      ) : filteredTransactions?.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#F0ECEC] bg-white py-16 text-center shadow-sm">
+          <Icon icon="solar:transfer-horizontal-bold" className="mb-4 h-16 w-16 text-[#F0ECEC]" />
+          <h3 className="font-display text-lg font-bold text-[#343434]">No transactions recorded yet</h3>
+          <p className="mt-1 text-sm text-[#625f5f]">
+            Use the Record Full Payment button to log a direct member payment.
+          </p>
         </div>
       ) : (
         <TransactionsTable transactions={filteredTransactions || []} />

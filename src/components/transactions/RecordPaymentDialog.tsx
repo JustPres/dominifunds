@@ -7,6 +7,7 @@ import { getRecordOptions, recordFullPayment } from "@/lib/api/transactions";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from "@/components/ui/dialog";
 import { Icon } from "@iconify/react";
+import { useSession } from "next-auth/react";
 
 const paymentSchema = z.object({
   memberId: z.string().min(1, "Select a member"),
@@ -22,11 +23,13 @@ type FormValues = z.infer<typeof paymentSchema>;
 export default function RecordPaymentDialog() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const orgId = session?.user?.orgId;
 
   const { data: options } = useQuery({
-    queryKey: ["record-options"],
-    queryFn: getRecordOptions,
-    enabled: open, 
+    queryKey: ["record-options", orgId],
+    queryFn: () => getRecordOptions(orgId as string),
+    enabled: open && !!orgId, 
   });
 
   const {

@@ -1,13 +1,14 @@
 "use client";
 
-import { useRoleStore } from "@/stores/role-store";
 import { Icon } from "@iconify/react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
-  const { viewAs, setViewAs } = useRoleStore();
-  const pathname = usePathname();
+  const { data: session } = useSession();
+
+  const initials = session?.user?.name
+    ? session.user.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()
+    : "ST";
 
   return (
     <div className="flex h-screen flex-col font-body bg-[#F9F7F6]">
@@ -21,43 +22,12 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         </div>
 
         <div className="flex items-center gap-6">
-           {/* Navigation Context */}
-           <nav className="hidden md:flex items-center gap-1">
-             <Link 
-               href="/portal" 
-               className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${pathname === "/portal" ? "bg-[#3D0808]/5 text-[#3D0808]" : "text-[#625f5f] hover:bg-slate-50"}`}
-             >
-               My Obligations
-             </Link>
-           </nav>
-
-           <div className="h-6 w-px bg-[#F0ECEC]" />
-
-           {/* View As Toggle directly in header for isolation test mapping */}
-           <div className="flex items-center gap-2">
-             <span className="text-[10px] uppercase font-bold text-[#625f5f] tracking-wider">Mode</span>
-             <div className="flex rounded-md bg-slate-100 p-0.5">
-               <button
-                 onClick={() => setViewAs("OFFICER")}
-                 className={`rounded px-2.5 py-1 text-[11px] font-bold transition-colors ${viewAs === "OFFICER" ? "bg-white text-[#343434] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-               >
-                 OFFICER
-               </button>
-               <button
-                 onClick={() => setViewAs("STUDENT")}
-                 className={`rounded px-2.5 py-1 text-[11px] font-bold transition-colors ${viewAs === "STUDENT" ? "bg-white text-[#343434] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-               >
-                 STUDENT
-               </button>
-             </div>
-           </div>
-
-           <div className="flex items-center gap-3 border-l border-[#F0ECEC] pl-6">
+           <div className="flex items-center gap-3">
              <button className="relative text-[#625f5f] hover:text-[#343434]">
                 <Icon icon="solar:bell-bold" className="h-5 w-5" />
              </button>
              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3D0808] text-xs font-bold text-white shadow-sm ring-2 ring-white">
-                JD
+                {initials}
              </div>
            </div>
         </div>

@@ -35,6 +35,25 @@ export default function FundTypeGrid({ fundTypes, onEdit, onCreate }: FundTypeGr
     }
   };
 
+  if (fundTypes.length === 0) {
+    return (
+      <div className="flex min-h-[400px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#F0ECEC] bg-white p-8 text-center shadow-sm">
+        <Icon icon="solar:folder-with-files-bold-duotone" className="mb-4 h-16 w-16 text-[#625f5f]/40" />
+        <h3 className="font-display text-xl font-bold text-[#343434]">No fund types defined yet.</h3>
+        <p className="mt-2 text-sm text-[#625f5f]">Set up base collection guidelines here.</p>
+        <div className="mt-6">
+          <button
+            onClick={onCreate}
+            className="flex items-center gap-2 rounded-lg bg-[#a12124] px-4 py-2 font-display text-sm font-semibold text-white transition-colors hover:bg-[#8a1c1e]"
+          >
+            <Icon icon="solar:add-circle-bold" className="h-[18px] w-[18px]" />
+            Add Fund Type
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
       {fundTypes.map((ft) => (

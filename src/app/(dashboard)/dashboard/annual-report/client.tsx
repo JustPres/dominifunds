@@ -14,11 +14,17 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 
 export default function ReportsClient() {
+  const { data: session } = useSession();
+  const orgId = session?.user?.orgId;
+  const currentYear = new Date().getFullYear();
+
   const { data, isLoading } = useQuery({
-    queryKey: ["reports"],
-    queryFn: getReportData,
+    queryKey: ["reports", orgId, currentYear],
+    queryFn: () => getReportData(orgId as string, currentYear),
+    enabled: !!orgId,
   });
 
   const [isExporting, setIsExporting] = useState(false);

@@ -4,24 +4,26 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { loginSchema, type LoginFormValues } from "@/lib/validators/auth";
+interface LoginFormValues {
+  email: string;
+  password: string;
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginRole, setLoginRole] = useState<"OFFICER" | "STUDENT">("OFFICER");
 
   const {
     register,
     handleSubmit,
     formState: { errors },
+    setError,
   } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
@@ -29,17 +31,30 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormValues) => {
+    // Manual validation
+    let hasError = false;
+    if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+      setError("email", { message: "Enter a valid email address" });
+      hasError = true;
+    }
+    if (!data.password || data.password.length < 1) {
+      setError("password", { message: "Password is required" });
+      hasError = true;
+    }
+    if (hasError) return;
+
     setIsLoading(true);
 
     try {
       const result = await signIn("credentials", {
         email: data.email,
         password: data.password,
+        role: loginRole,
         redirect: false,
       });
 
       if (result?.error) {
-        toast.error("Invalid email or password. Please try again.");
+        toast.error("Invalid email or password.");
         setIsLoading(false);
         return;
       }
@@ -54,94 +69,123 @@ export default function LoginPage() {
         router.push("/portal");
       }
     } catch {
-      toast.error("Something went wrong. Please try again.");
+      toast.error("Invalid email or password.");
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F9F7F6] px-4 font-body">
-      <div className="w-full max-w-md">
-        {/* Card */}
-        <div className="rounded-2xl border border-[#F0ECEC] bg-white px-8 py-10 shadow-lg">
-          {/* Logo */}
-          <div className="mb-8 flex flex-col items-center gap-3">
-            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[#a12124] shadow-md">
-              <span className="font-display text-2xl font-bold tracking-tight text-white">
-                DF
-              </span>
-            </div>
-            <div className="text-center">
-              <h1 className="font-display text-2xl font-bold text-[#343434]">
-                DominiFunds
-              </h1>
-              <p className="mt-1 text-sm text-[#625f5f]">
-                Sign in to your account
-              </p>
-            </div>
+    <div className="flex min-h-screen items-center justify-center bg-[#F9F7F6]">
+      <div className="w-[400px] rounded-[12px] bg-[#FFFFFF] p-8 shadow-sm">
+        {/* Header Section */}
+        <div className="flex flex-col items-center text-center">
+          {/* Logo Mark */}
+          <div className="flex h-12 w-12 items-center justify-center bg-[#a12124]">
+            <span className="text-xl font-bold text-white">DF</span>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            {/* Email Field */}
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-[#343434]">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                autoComplete="email"
-                disabled={isLoading}
-                className="h-10 rounded-lg border-[#F0ECEC] bg-white px-3 text-[#343434] placeholder:text-[#625f5f]/50 focus-visible:border-[#a12124] focus-visible:ring-[#a12124]/20"
-                {...register("email")}
-              />
-              {errors.email && (
-                <p className="text-xs text-[#a12124]">{errors.email.message}</p>
-              )}
-            </div>
+          <h1
+            className="mt-4 text-2xl font-bold uppercase text-[#a12124]"
+            style={{ fontFamily: "'Century Gothic', sans-serif" }}
+          >
+            DOMINIFUNDS
+          </h1>
 
-            {/* Password Field */}
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-[#343434]">
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                autoComplete="current-password"
-                disabled={isLoading}
-                className="h-10 rounded-lg border-[#F0ECEC] bg-white px-3 text-[#343434] placeholder:text-[#625f5f]/50 focus-visible:border-[#a12124] focus-visible:ring-[#a12124]/20"
-                {...register("password")}
-              />
-              {errors.password && (
-                <p className="text-xs text-[#a12124]">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="flex h-10 w-full items-center justify-center rounded-lg bg-[#a12124] font-display text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#8a1c1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a12124]/50 focus-visible:ring-offset-2 active:translate-y-px disabled:pointer-events-none disabled:opacity-50"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Sign In"
-              )}
-            </button>
-          </form>
+          <p className="mt-1 text-sm text-gray-500">
+            Student Organization Fund Tracker
+          </p>
+          <p className="text-sm text-gray-500">
+            St. Dominic College of Asia
+          </p>
         </div>
 
-        {/* Footer */}
-        <p className="mt-6 text-center text-xs text-[#625f5f]">
-          &copy; {new Date().getFullYear()} SDCA DominiFunds. All rights
-          reserved.
+        <hr className="my-6 border-gray-200" />
+
+        {/* Role Toggle Selector */}
+        <div className="mb-6 flex h-10 w-full rounded-lg bg-gray-100 p-1">
+          <button
+            type="button"
+            className={`flex flex-1 items-center justify-center rounded-md text-sm font-semibold transition-all ${
+              loginRole === "OFFICER"
+                ? "bg-white text-[#a12124] shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+            onClick={() => setLoginRole("OFFICER")}
+          >
+            Officer
+          </button>
+          <button
+            type="button"
+            className={`flex flex-1 items-center justify-center rounded-md text-sm font-semibold transition-all ${
+              loginRole === "STUDENT"
+                ? "bg-white text-[#a12124] shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+            onClick={() => setLoginRole("STUDENT")}
+          >
+            Student
+          </button>
+        </div>
+
+        {/* Form Section */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="email" className="text-sm font-medium text-gray-700">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              placeholder="youremail@sdca.edu.ph"
+              disabled={isLoading}
+              className="h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-[#a12124] focus:ring-1 focus:ring-[#a12124]/30 disabled:cursor-not-allowed disabled:opacity-50"
+              {...register("email")}
+            />
+            {errors.email && (
+              <p className="text-xs text-[#a12124]">{errors.email.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="password" className="text-sm font-medium text-gray-700">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                disabled={isLoading}
+                className="h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 pr-10 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-[#a12124] focus:ring-1 focus:ring-[#a12124]/30 disabled:cursor-not-allowed disabled:opacity-50"
+                {...register("password")}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {errors.password && (
+              <p className="text-xs text-[#a12124]">{errors.password.message}</p>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="mt-2 flex h-10 w-full items-center justify-center bg-[#a12124] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ borderRadius: "6px" }}
+          >
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Login"}
+          </button>
+        </form>
+
+        {/* Footer Note */}
+        <p className="mt-6 text-center text-xs text-gray-500">
+          Officer and Student accounts are created by your organization admin.
         </p>
       </div>
     </div>

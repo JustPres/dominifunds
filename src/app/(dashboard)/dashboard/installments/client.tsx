@@ -75,6 +75,15 @@ export default function InstallmentsClient() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-[350px] w-full rounded-2xl" />)}
         </div>
+      ) : data?.plans.length === 0 ? (
+        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#F0ECEC] bg-white p-8 text-center shadow-sm">
+           <Icon icon="solar:history-bold-duotone" className="mb-4 h-16 w-16 text-[#625f5f]/40" />
+           <h3 className="font-display text-xl font-bold text-[#343434]">No installment plans created yet.</h3>
+           <p className="mt-2 text-sm text-[#625f5f]">Start creating structured installment splits for members.</p>
+           <div className="mt-6">
+             <AddInstallmentDialog />
+           </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
            {data?.plans.map(plan => (

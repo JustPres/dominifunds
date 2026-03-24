@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { format } from "date-fns";
+import { useSession } from "next-auth/react";
 import { useNotificationStore } from "@/stores/notification-store";
 import NotifPanel from "./NotifPanel";
 
@@ -22,6 +23,11 @@ export default function Topbar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const notifications = useNotificationStore((s) => s.notifications);
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const { data: session } = useSession();
+
+  const initials = session?.user?.name
+    ? session.user.name.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase()
+    : "OF";
 
   // Find the matching page meta
   const currentPage = pageMeta[pathname] ?? pageMeta["/dashboard"];
@@ -39,7 +45,7 @@ export default function Topbar() {
           {currentPage.title}
         </h1>
         <span className="text-[#625f5f]/30">|</span>
-        <span className="text-xs text-[#625f5f]">SDCA BSIT</span>
+        <span className="text-xs text-[#625f5f]">{session?.user?.orgId || "SDCA"}</span>
       </div>
 
       {/* Right — Date, Bell, Avatar */}
@@ -49,6 +55,7 @@ export default function Topbar() {
         {/* Notification Bell */}
         <div className="relative">
           <button
+            data-notif-trigger
             onClick={() => setNotifOpen(!notifOpen)}
             className="relative flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[#F0ECEC]"
           >
@@ -71,7 +78,7 @@ export default function Topbar() {
 
         {/* User Avatar */}
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#a12124]/10">
-          <span className="text-xs font-semibold text-[#a12124]">JD</span>
+          <span className="text-xs font-semibold text-[#a12124]">{initials}</span>
         </div>
       </div>
     </header>

@@ -23,6 +23,87 @@ model User {
   role      Role     @default(STUDENT)
   orgId     String?
   orgRole   String?
+
+  transactions     Transaction[]
+  installmentPlans InstallmentPlan[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model FundType {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  amount      Float
+  required    Boolean  @default(false)
+  orgId       String
+
+  transactions     Transaction[]
+  installmentPlans InstallmentPlan[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum TransactionType {
+  FULL_PAYMENT
+  INSTALLMENT_PAYMENT
+}
+
+enum TransactionStatus {
+  PAID
+  PENDING
+  OVERDUE
+}
+
+model Transaction {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  memberId        String            @db.ObjectId
+  fundTypeId      String            @db.ObjectId
+  type            TransactionType
+  status          TransactionStatus @default(PAID)
+  amount          Float
+  note            String?
+  installmentInfo String?
+
+  member          User              @relation(fields: [memberId], references: [id])
+  fundType        FundType          @relation(fields: [fundTypeId], references: [id])
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+enum PlanStatus {
+  ACTIVE
+  COMPLETED
+  DEFAULTED
+}
+
+model InstallmentPlan {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  memberId    String       @db.ObjectId
+  fundTypeId  String       @db.ObjectId
+  status      PlanStatus   @default(ACTIVE)
+
+  member      User         @relation(fields: [memberId], references: [id])
+  fundType    FundType     @relation(fields: [fundTypeId], references: [id])
+  entries     InstallmentEntry[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model InstallmentEntry {
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  planId      String            @db.ObjectId
+  amountDue   Float
+  dueDate     DateTime
+  status      TransactionStatus @default(PENDING)
+  title       String?
+
+  plan        InstallmentPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 }

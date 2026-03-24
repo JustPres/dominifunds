@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getMembers } from "@/lib/api/members";
 import { Icon } from "@iconify/react";
+import { useSession } from "next-auth/react";
 import MembersTable from "@/components/members/MembersTable";
 import AddMemberDialog from "@/components/members/AddMemberDialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,10 +14,13 @@ type FilterStatus = "All" | "Good Standing" | "Has Installment Plan" | "Overdue"
 export default function MembersClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("All");
+  const { data: session } = useSession();
+  const orgId = session?.user?.orgId;
 
   const { data: members, isLoading } = useQuery({
-    queryKey: ["members", "org1"],
+    queryKey: ["members", orgId],
     queryFn: () => getMembers(),
+    enabled: !!orgId,
   });
 
   // Filter application

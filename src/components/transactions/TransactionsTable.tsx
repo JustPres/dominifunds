@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Transaction } from "@/lib/api/transactions";
 import { format } from "date-fns";
 import { Icon } from "@iconify/react";
+import RecordPaymentDialog from "./RecordPaymentDialog";
 import {
   Pagination,
   PaginationContent,
@@ -28,10 +29,13 @@ export default function TransactionsTable({ transactions }: TransactionsTablePro
 
   if (transactions.length === 0) {
     return (
-      <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-[#F0ECEC] bg-white p-8 text-center shadow-sm">
-        <Icon icon="solar:transfer-horizontal-bold-duotone" className="mb-4 h-16 w-16 text-[#F0ECEC]" />
-        <h3 className="font-display text-xl font-bold text-[#343434]">No transactions found</h3>
-        <p className="mt-2 text-sm text-[#625f5f]">Adjust your filters or record a new payment.</p>
+      <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-[#F0ECEC] border-dashed bg-white p-8 text-center shadow-sm">
+        <Icon icon="solar:transfer-horizontal-bold-duotone" className="mb-4 h-16 w-16 text-[#625f5f]/40" />
+        <h3 className="font-display text-xl font-bold text-[#343434]">No transactions recorded yet.</h3>
+        <p className="mt-2 text-sm text-[#625f5f]">Keep track of organizational payments here.</p>
+        <div className="mt-6">
+          <RecordPaymentDialog />
+        </div>
       </div>
     );
   }

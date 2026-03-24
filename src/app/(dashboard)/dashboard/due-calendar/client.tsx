@@ -19,15 +19,19 @@ import { Icon } from "@iconify/react";
 import { toast } from "sonner";
 import { getMonthlyDues, sendReminder, DayDues } from "@/lib/api/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSession } from "next-auth/react";
 
 export default function DashboardCalendarClient() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const { data: session } = useSession();
+  const orgId = session?.user?.orgId;
 
   // Fetch data
   const { data, isLoading } = useQuery({
-    queryKey: ["calendar-dues", "org1", currentMonth.getMonth() + 1, currentMonth.getFullYear()],
-    queryFn: () => getMonthlyDues("org1", currentMonth.getMonth() + 1, currentMonth.getFullYear()),
+    queryKey: ["calendar-dues", orgId, currentMonth.getMonth() + 1, currentMonth.getFullYear()],
+    queryFn: () => getMonthlyDues(orgId as string, currentMonth.getMonth() + 1, currentMonth.getFullYear()),
+    enabled: !!orgId,
   });
 
   // Remind Mutation
@@ -103,6 +107,11 @@ export default function DashboardCalendarClient() {
             <div className="col-span-7 flex h-[400px] items-center justify-center text-[#625f5f]/50 flex-col gap-4">
                <Icon icon="solar:calendar-mark-bold-duotone" className="h-10 w-10 animate-pulse" />
                <p className="text-sm font-medium">Loading calendar...</p>
+            </div>
+          ) : data && Object.keys(data.duesByDate).length === 0 ? (
+            <div className="col-span-7 flex h-[400px] items-center justify-center text-[#625f5f]/50 flex-col gap-4">
+               <Icon icon="solar:calendar-search-bold" className="h-10 w-10" />
+               <p className="text-sm font-medium">No dues scheduled for this month</p>
             </div>
           ) : (
             calendarDays.map((day, idx) => {

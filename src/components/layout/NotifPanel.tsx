@@ -33,7 +33,12 @@ export default function NotifPanel({ open, onClose }: NotifPanelProps) {
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+      const target = e.target as Element;
+      if (
+        panelRef.current && 
+        !panelRef.current.contains(target) &&
+        !target.closest('[data-notif-trigger]')
+      ) {
         onClose();
       }
     }
