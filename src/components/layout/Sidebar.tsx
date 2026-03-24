@@ -17,7 +17,6 @@ const navLinks = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
 
   return (
     <aside className="fixed left-0 top-0 z-30 flex h-screen w-[220px] flex-col bg-[#3D0808] font-body">
