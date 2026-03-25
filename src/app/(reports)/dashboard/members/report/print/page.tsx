@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { getMemberReport } from "@/lib/member-report";
+import { getMemberReport, parseMemberReportFilterStatus } from "@/lib/member-report";
 import MemberReportPrintSheet from "@/components/members/MemberReportPrintSheet";
 import AutoPrint from "./auto-print";
 
@@ -27,7 +27,7 @@ export default async function MembersReportPrintPage({
 
   const report = await getMemberReport(session.user.orgId || undefined, {
     search: searchParams.search,
-    status: searchParams.status,
+    status: parseMemberReportFilterStatus(searchParams.status),
   });
 
   return (

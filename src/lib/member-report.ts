@@ -9,6 +9,12 @@ export type MemberDirectoryStatus = "Good Standing" | "Has Installment Plan" | "
 export type MemberOverallStatus = "Fully Paid" | "On Installment" | "Overdue" | "No Payment Record";
 export type MemberPaymentMode = "Full Payment" | "Installment" | "Mixed" | "None";
 export type MemberReportFilterStatus = "All" | MemberDirectoryStatus;
+export const MEMBER_REPORT_FILTER_STATUSES: MemberReportFilterStatus[] = [
+  "All",
+  "Good Standing",
+  "Has Installment Plan",
+  "Overdue",
+];
 
 export interface MemberReportFilters {
   search?: string;
@@ -79,24 +85,28 @@ export interface MemberReportColumn {
   kind?: "text" | "currency" | "date" | "number";
 }
 
+export function parseMemberReportFilterStatus(
+  value?: string | null
+): MemberReportFilterStatus | undefined {
+  if (!value) return undefined;
+
+  return MEMBER_REPORT_FILTER_STATUSES.includes(value as MemberReportFilterStatus)
+    ? (value as MemberReportFilterStatus)
+    : undefined;
+}
+
 export const MEMBER_REPORT_EXPORT_COLUMNS: MemberReportColumn[] = [
   { key: "name", header: "Student Name", width: 24 },
   { key: "email", header: "Email", width: 28 },
   { key: "role", header: "Role", width: 18 },
   { key: "yearLevel", header: "Year Level", width: 16 },
-  { key: "status", header: "Directory Status", width: 18 },
-  { key: "overallStatus", header: "Overall Status", width: 18 },
+  { key: "overallStatus", header: "Standing", width: 18 },
   { key: "paymentMode", header: "Payment Mode", width: 16 },
   { key: "totalPaid", header: "Total Paid", width: 14, kind: "currency" },
   { key: "balanceDue", header: "Balance Due", width: 14, kind: "currency" },
   { key: "activeInstallmentPlans", header: "Active Installment Plans", width: 16, kind: "number" },
-  { key: "overdueEntries", header: "Overdue Installment Entries", width: 18, kind: "number" },
-  { key: "overdueTransactions", header: "Overdue Transactions", width: 16, kind: "number" },
-  { key: "outstandingInstallmentAmount", header: "Outstanding Installment Amount", width: 20, kind: "currency" },
-  { key: "outstandingTransactionAmount", header: "Outstanding Transaction Amount", width: 20, kind: "currency" },
-  { key: "recentPaymentDate", header: "Recent Payment Date", width: 16, kind: "date" },
-  { key: "recentPaymentTypeLabel", header: "Recent Payment Type", width: 18 },
-  { key: "recentPaymentAmount", header: "Recent Payment Amount", width: 18, kind: "currency" },
+  { key: "overdueEntries", header: "Overdue Installments", width: 16, kind: "number" },
+  { key: "overdueTransactions", header: "Overdue Full Payments", width: 16, kind: "number" },
   { key: "recentFullPaymentDate", header: "Recent Full Payment Date", width: 18, kind: "date" },
   { key: "recentInstallmentPaymentDate", header: "Recent Installment Payment Date", width: 20, kind: "date" },
 ];

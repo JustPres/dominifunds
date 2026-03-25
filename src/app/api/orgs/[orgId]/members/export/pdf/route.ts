@@ -1,10 +1,9 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { auth } from "@/lib/auth";
-import { getMemberReport } from "@/lib/member-report";
+import { getMemberReport, parseMemberReportFilterStatus } from "@/lib/member-report";
 import { MemberReportPdfDocument } from "@/lib/member-report-pdf";
 
 export async function GET(
@@ -20,11 +19,11 @@ export async function GET(
   const { searchParams } = new URL(request.url);
   const report = await getMemberReport(params.orgId, {
     search: searchParams.get("search") || undefined,
-    status: searchParams.get("status") || undefined,
+    status: parseMemberReportFilterStatus(searchParams.get("status")),
   });
 
   const buffer = await renderToBuffer(
-    React.createElement(MemberReportPdfDocument, {
+    MemberReportPdfDocument({
       orgId: params.orgId,
       report,
     })

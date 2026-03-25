@@ -20,7 +20,7 @@ function buildInstallmentAmounts(totalAmount: number, numberOfInstallments: numb
   });
 }
 
-function formatPlanPeriod(period?: string, fallbackFrequency?: FundFrequency) {
+function formatPlanPeriod(period?: string | null, fallbackFrequency?: FundFrequency) {
   if (period?.trim()) {
     return period.trim();
   }

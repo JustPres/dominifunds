@@ -7,6 +7,7 @@ import {
   getMemberReport,
   getMemberReportColumnValue,
   MEMBER_REPORT_EXPORT_COLUMNS,
+  parseMemberReportFilterStatus,
 } from "@/lib/member-report";
 
 export async function GET(
@@ -22,7 +23,7 @@ export async function GET(
   const { searchParams } = new URL(request.url);
   const report = await getMemberReport(params.orgId, {
     search: searchParams.get("search") || undefined,
-    status: searchParams.get("status") || undefined,
+    status: parseMemberReportFilterStatus(searchParams.get("status")),
   });
 
   const workbook = new Workbook();

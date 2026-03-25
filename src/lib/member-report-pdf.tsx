@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Page, StyleSheet, Text, View, type DocumentProps } from "@react-pdf/renderer";
 import {
   getMemberReportColumnValue,
   MemberReportData,
@@ -131,7 +131,7 @@ export function MemberReportPdfDocument({
 }: {
   orgId: string | null;
   report: MemberReportData;
-}) {
+}): React.ReactElement<DocumentProps> {
   return (
     <Document
       title={`Members Report ${orgId || "Org"}`}

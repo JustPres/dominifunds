@@ -5,13 +5,13 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { formatYearLevelLabel, resolveStudentOrgRole } from "@/lib/member-fields";
-import { getMemberReport } from "@/lib/member-report";
+import { getMemberReport, parseMemberReportFilterStatus } from "@/lib/member-report";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const orgId = searchParams.get("orgId");
   const search = searchParams.get("search") || undefined;
-  const status = searchParams.get("status") || undefined;
+  const status = parseMemberReportFilterStatus(searchParams.get("status"));
   const report = await getMemberReport(orgId || undefined, {
     search,
     status,
