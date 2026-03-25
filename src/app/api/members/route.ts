@@ -1,4 +1,7 @@
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
@@ -55,7 +58,6 @@ export async function POST(request: Request) {
   const body = await request.json();
   const { name, email, role, yearLevel, orgId } = body;
 
-  const bcrypt = await import("bcrypt");
   const hashedPassword = await bcrypt.hash("password123", 10);
 
   const user = await prisma.user.create({
