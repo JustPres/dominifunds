@@ -30,9 +30,9 @@ export default NextAuth(authConfig).auth((req) => {
 
   // Handle Authenticated Users
   if (isLoggedIn) {
-    // 4. Authenticated users visiting /login are redirected to their correct dashboard
-    // Also handle root URL redirecting to correct dashboard
-    if (isAuthRoute || pathname === "/") {
+    // Keep auth pages accessible so users can switch accounts intentionally.
+    // Only redirect the root path to the matching workspace.
+    if (pathname === "/") {
       if (role === "STUDENT") {
         return NextResponse.redirect(new URL("/portal", req.nextUrl.origin));
       }

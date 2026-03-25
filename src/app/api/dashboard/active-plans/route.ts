@@ -1,8 +1,11 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { syncInstallmentStatuses } from "@/lib/member-report";
 
 export async function GET() {
+  await syncInstallmentStatuses();
+
   const plans = await prisma.installmentPlan.findMany({
     where: { status: "ACTIVE" },
     include: {

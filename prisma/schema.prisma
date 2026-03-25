@@ -23,6 +23,7 @@ model User {
   role      Role     @default(STUDENT)
   orgId     String?
   orgRole   String?
+  yearLevel String?
 
   transactions     Transaction[]
   installmentPlans InstallmentPlan[]
@@ -32,18 +33,29 @@ model User {
 }
 
 model FundType {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  description String?
-  amount      Float
-  required    Boolean  @default(false)
-  orgId       String
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  description      String?
+  amount           Float
+  frequency        FundFrequency @default(PER_SEMESTER)
+  required         Boolean       @default(false)
+  allowInstallment Boolean       @default(false)
+  maxInstallments  Int?
+  archivedAt       DateTime?
+  orgId            String
 
   transactions     Transaction[]
   installmentPlans InstallmentPlan[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+enum FundFrequency {
+  MONTHLY
+  PER_SEMESTER
+  ANNUAL
+  PER_EVENT
 }
 
 enum TransactionType {
@@ -64,6 +76,7 @@ model Transaction {
   type            TransactionType
   status          TransactionStatus @default(PAID)
   amount          Float
+  dueDate         DateTime?
   note            String?
   installmentInfo String?
 
@@ -84,6 +97,7 @@ model InstallmentPlan {
   id          String       @id @default(auto()) @map("_id") @db.ObjectId
   memberId    String       @db.ObjectId
   fundTypeId  String       @db.ObjectId
+  periodLabel String?
   status      PlanStatus   @default(ACTIVE)
 
   member      User         @relation(fields: [memberId], references: [id])

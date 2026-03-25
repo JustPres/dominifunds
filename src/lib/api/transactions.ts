@@ -72,7 +72,8 @@ export async function recordFullPayment(payload: {
   });
 
   if (!res.ok) {
-    throw new Error("Failed to record transaction");
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to record transaction");
   }
 
   return await res.json();

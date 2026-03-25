@@ -4,54 +4,43 @@ export const runtime = "nodejs";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { formatYearLevelLabel, resolveStudentOrgRole } from "@/lib/member-fields";
+import { getMemberReport } from "@/lib/member-report";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const orgId = searchParams.get("orgId");
-
-  const where = orgId ? { role: "STUDENT" as const, orgId } : { role: "STUDENT" as const };
-
-  const members = await prisma.user.findMany({
-    where,
-    include: {
-      transactions: true,
-      installmentPlans: {
-        where: { status: "ACTIVE" },
-      },
-    },
-    orderBy: { name: "asc" },
+  const search = searchParams.get("search") || undefined;
+  const status = searchParams.get("status") || undefined;
+  const report = await getMemberReport(orgId || undefined, {
+    search,
+    status,
   });
 
-  const result = members.map((m) => {
-    const totalPaid = m.transactions
-      .filter((t) => t.status === "PAID")
-      .reduce((sum, t) => sum + t.amount, 0);
-    const activePlans = m.installmentPlans.length;
-    const balanceDue = m.transactions
-      .filter((t) => t.status === "PENDING" || t.status === "OVERDUE")
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    let status: "Good Standing" | "Has Installment Plan" | "Overdue" = "Good Standing";
-    if (m.transactions.some((t) => t.status === "OVERDUE")) {
-      status = "Overdue";
-    } else if (activePlans > 0) {
-      status = "Has Installment Plan";
-    }
-
-    return {
-      id: m.id,
-      name: m.name,
-      email: m.email,
-      role: m.orgRole || "Member",
-      yearLevel: "1st",
-      totalPaid,
-      activeInstallmentPlans: activePlans,
-      balanceDue,
-      status,
-    };
-  });
-
-  return NextResponse.json(result);
+  return NextResponse.json(
+    report.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      role: row.role,
+      yearLevel: row.yearLevel,
+      totalPaid: row.totalPaid,
+      activeInstallmentPlans: row.activeInstallmentPlans,
+      balanceDue: row.balanceDue,
+      status: row.status,
+      overallStatus: row.overallStatus,
+      paymentMode: row.paymentMode,
+      recentPaymentDate: row.recentPaymentDate,
+      recentPaymentType: row.recentPaymentType,
+      recentPaymentAmount: row.recentPaymentAmount,
+      recentFullPaymentDate: row.recentFullPaymentDate,
+      recentInstallmentPaymentDate: row.recentInstallmentPaymentDate,
+      overdueEntries: row.overdueEntries,
+      overdueTransactions: row.overdueTransactions,
+      outstandingInstallmentAmount: row.outstandingInstallmentAmount,
+      outstandingTransactionAmount: row.outstandingTransactionAmount,
+    }))
+  );
 }
 
 export async function POST(request: Request) {
@@ -68,6 +57,7 @@ export async function POST(request: Request) {
       role: "STUDENT",
       orgId: orgId || null,
       orgRole: role || "Member",
+      yearLevel: yearLevel || null,
     },
   });
 
@@ -75,11 +65,22 @@ export async function POST(request: Request) {
     id: user.id,
     name: user.name,
     email: user.email,
-    role: user.orgRole || "Member",
-    yearLevel: yearLevel || "1st",
+    role: resolveStudentOrgRole(user.orgRole),
+    yearLevel: formatYearLevelLabel(user.yearLevel),
     totalPaid: 0,
     activeInstallmentPlans: 0,
     balanceDue: 0,
     status: "Good Standing",
+    overallStatus: "No Payment Record",
+    paymentMode: "None",
+    recentPaymentDate: "",
+    recentPaymentType: "",
+    recentPaymentAmount: 0,
+    recentFullPaymentDate: "",
+    recentInstallmentPaymentDate: "",
+    overdueEntries: 0,
+    overdueTransactions: 0,
+    outstandingInstallmentAmount: 0,
+    outstandingTransactionAmount: 0,
   }, { status: 201 });
 }

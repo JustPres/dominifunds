@@ -45,9 +45,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           role: user.role,
           orgId: user.orgId,
           orgRole: user.orgRole,
+          yearLevel: user.yearLevel,
         };
       },
     }),
   ],
 });
-

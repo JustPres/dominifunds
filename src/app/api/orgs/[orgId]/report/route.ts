@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { syncInstallmentStatuses } from "@/lib/member-report";
 
 export async function GET(
   request: Request,
@@ -8,6 +9,8 @@ export async function GET(
   const { searchParams } = new URL(request.url);
   const orgId = params.orgId;
   const year = parseInt(searchParams.get("year") || new Date().getFullYear().toString(), 10);
+
+  await syncInstallmentStatuses(orgId);
 
   const startDate = new Date(year, 0, 1);
   const endDate = new Date(year, 11, 31, 23, 59, 59);

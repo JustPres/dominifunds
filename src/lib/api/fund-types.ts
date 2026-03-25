@@ -11,7 +11,10 @@ export interface FundType {
   required: boolean;
   allowInstallment: boolean;
   maxInstallments?: number | null;
-  transactionCount: number; // Used to block deletion
+  transactionCount: number;
+  installmentPlanCount: number;
+  archivedAt: string | null;
+  isArchived: boolean;
 }
 
 export interface FundTypeKPIs {
@@ -25,9 +28,20 @@ export interface FundTypesResponse {
   fundTypes: FundType[];
 }
 
-export async function getFundTypes(): Promise<FundTypesResponse> {
+type FundTypeMutationInput = Omit<
+  FundType,
+  "id" | "transactionCount" | "installmentPlanCount" | "archivedAt" | "isArchived"
+>;
+
+export async function getFundTypes(orgId: string, includeArchived = true): Promise<FundTypesResponse> {
   try {
-    const res = await fetch("/api/fund-types");
+    const params = new URLSearchParams();
+
+    if (includeArchived) {
+      params.set("includeArchived", "true");
+    }
+
+    const res = await fetch(`/api/orgs/${encodeURIComponent(orgId)}/fund-types?${params.toString()}`);
     if (!res.ok) throw new Error();
     return res.json();
   } catch {
@@ -38,31 +52,38 @@ export async function getFundTypes(): Promise<FundTypesResponse> {
   }
 }
 
-export async function createFundType(payload: Omit<FundType, "id" | "transactionCount">): Promise<FundType> {
-  const res = await fetch("/api/fund-types", {
+export async function createFundType(orgId: string, payload: FundTypeMutationInput): Promise<FundType> {
+  const res = await fetch(`/api/orgs/${encodeURIComponent(orgId)}/fund-types`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error("Failed to create fund type");
   return res.json();
 }
 
-export async function updateFundType(id: string, payload: Partial<Omit<FundType, "id" | "transactionCount">>): Promise<FundType> {
-  const res = await fetch(`/api/fund-types/${id}`, {
+export async function updateFundType(
+  orgId: string,
+  id: string,
+  payload: Partial<FundTypeMutationInput>
+): Promise<FundType> {
+  const res = await fetch(`/api/orgs/${encodeURIComponent(orgId)}/fund-types/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error("Failed to update fund type");
   return res.json();
 }
 
-export async function deleteFundType(id: string): Promise<{ success: boolean }> {
-  const res = await fetch(`/api/fund-types/${id}`, { method: "DELETE" });
+export async function deleteFundType(
+  orgId: string,
+  id: string
+): Promise<{ success: boolean; action: "deleted" | "archived" }> {
+  const res = await fetch(`/api/orgs/${encodeURIComponent(orgId)}/fund-types/${id}`, { method: "DELETE" });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.message || "Failed to delete fund type");
   }
-  return { success: true };
+  return res.json();
 }

@@ -7,6 +7,7 @@ import { addMember } from "@/lib/api/members";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Icon } from "@iconify/react";
+import { useSession } from "next-auth/react";
 
 const addMemberSchema = z.object({
   name: z.string().min(2, "Name is required (at least 2 characters)"),
@@ -20,6 +21,8 @@ type AddMemberFormValues = z.infer<typeof addMemberSchema>;
 export default function AddMemberDialog() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const orgId = session?.user?.orgId;
 
   const {
     register,
@@ -37,7 +40,7 @@ export default function AddMemberDialog() {
   });
 
   const mutation = useMutation({
-    mutationFn: (data: AddMemberFormValues) => addMember(data),
+    mutationFn: (data: AddMemberFormValues) => addMember({ ...data, orgId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members"] });
       toast.success("Member added successfully!");

@@ -19,6 +19,7 @@ async function main() {
       role: "OFFICER",
       orgId: "BSIT",
       orgRole: "Treasurer",
+      yearLevel: null,
     },
   });
 
@@ -32,7 +33,8 @@ async function main() {
       password: passwordHash,
       role: "STUDENT",
       orgId: "BSIT",
-      orgRole: "3rd Year",
+      orgRole: "Member",
+      yearLevel: "3rd",
     },
   });
 
@@ -47,7 +49,10 @@ async function main() {
         name: "Annual Org Fee",
         description: "Mandatory collection for the school year",
         amount: 500,
+        frequency: "PER_SEMESTER",
         required: true,
+        allowInstallment: true,
+        maxInstallments: null,
         orgId: "BSIT",
       },
     });

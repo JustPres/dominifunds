@@ -1,64 +1,164 @@
 "use client";
 
-import { useState } from "react";
+import { useDeferredValue, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getMembers } from "@/lib/api/members";
+import {
+  downloadMembersPdf,
+  exportMembersCsv,
+  exportMembersExcel,
+  getMembers,
+  openMembersPrintReport,
+  type MemberReportFilterStatus,
+} from "@/lib/api/members";
 import { Icon } from "@iconify/react";
 import { useSession } from "next-auth/react";
 import MembersTable from "@/components/members/MembersTable";
 import AddMemberDialog from "@/components/members/AddMemberDialog";
 import { Skeleton } from "@/components/ui/skeleton";
-
-type FilterStatus = "All" | "Good Standing" | "Has Installment Plan" | "Overdue";
+import { toast } from "sonner";
 
 export default function MembersClient() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<FilterStatus>("All");
+  const [filter, setFilter] = useState<MemberReportFilterStatus>("All");
+  const [isExporting, setIsExporting] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const { data: session } = useSession();
   const orgId = session?.user?.orgId;
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const { data: members, isLoading } = useQuery({
-    queryKey: ["members", orgId],
-    queryFn: () => getMembers(),
+    queryKey: ["members", orgId, deferredSearchQuery, filter],
+    queryFn: () => getMembers(orgId as string, {
+      search: deferredSearchQuery,
+      status: filter,
+    }),
     enabled: !!orgId,
   });
 
-  // Filter application
-  const filteredMembers = members?.filter((member) => {
-    // 1. apply status filter
-    if (filter !== "All" && member.status !== filter) return false;
+  const filterPills: MemberReportFilterStatus[] = ["All", "Good Standing", "Has Installment Plan", "Overdue"];
+  const activeFilters = {
+    search: deferredSearchQuery,
+    status: filter,
+  };
 
-    // 2. apply search query securely
-    if (searchQuery.trim() !== "") {
-      const q = searchQuery.toLowerCase();
-      return (
-        member.name.toLowerCase().includes(q) ||
-        member.yearLevel.toLowerCase().includes(q)
-      );
+  const handleExport = async () => {
+    if (!orgId) return;
+
+    setIsExporting(true);
+    toast.loading("Preparing member standings export...", { id: "members-export" });
+
+    try {
+      await exportMembersCsv(orgId, activeFilters);
+      toast.success("Members report downloaded.", { id: "members-export" });
+    } catch {
+      toast.error("Unable to export the members report.", { id: "members-export" });
+    } finally {
+      setIsExporting(false);
     }
-    return true;
-  });
+  };
 
-  const filterPills: FilterStatus[] = ["All", "Good Standing", "Has Installment Plan", "Overdue"];
+  const handleExportExcel = async () => {
+    if (!orgId) return;
+
+    setIsExportingExcel(true);
+    toast.loading("Building Excel workbook...", { id: "members-export-xlsx" });
+
+    try {
+      await exportMembersExcel(orgId, activeFilters);
+      toast.success("Excel workbook downloaded.", { id: "members-export-xlsx" });
+    } catch {
+      toast.error("Unable to export the Excel workbook.", { id: "members-export-xlsx" });
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!orgId) return;
+
+    setIsExportingPdf(true);
+    toast.loading("Rendering PDF report...", { id: "members-export-pdf" });
+
+    try {
+      await downloadMembersPdf(orgId, activeFilters);
+      toast.success("PDF report downloaded.", { id: "members-export-pdf" });
+    } catch {
+      toast.error("Unable to export the PDF report.", { id: "members-export-pdf" });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const handlePrint = () => {
+    openMembersPrintReport(activeFilters);
+  };
 
   return (
-    <div className="flex h-full flex-col font-body pb-8">
+    <div className="flex h-full flex-col pb-8 font-body print:pb-0">
       {/* Header Area */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="mb-8 flex flex-col justify-between gap-4 print:hidden md:flex-row md:items-center">
         <div>
           <h2 className="font-display text-3xl font-bold text-[#343434]">Members Directory</h2>
           <p className="mt-1 text-sm text-[#625f5f]">
-            Manage the students in your organization and their payment standings.
+            Track students, installment standing, overdue balances, and recent payments in one place.
           </p>
         </div>
         
-        <div className="shrink-0 flex items-center justify-end">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="group flex items-center gap-2 rounded-xl border border-[#F0ECEC] bg-white px-4 py-2.5 text-sm font-bold text-[#343434] shadow-sm transition-all hover:bg-[#F9F7F6]"
+          >
+            <Icon icon="solar:printer-bold" className="h-5 w-5 text-[#3D0808] transition-transform group-hover:-translate-y-0.5" />
+            Print report
+          </button>
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={isExportingPdf || !orgId}
+            className="group flex items-center gap-2 rounded-xl border border-[#F0ECEC] bg-white px-4 py-2.5 text-sm font-bold text-[#343434] shadow-sm transition-all hover:bg-[#F9F7F6] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isExportingPdf ? (
+              <Icon icon="solar:spinner-bold" className="h-5 w-5 animate-spin text-[#3D0808]" />
+            ) : (
+              <Icon icon="solar:file-download-bold" className="h-5 w-5 text-[#3D0808] transition-transform group-hover:-translate-y-0.5" />
+            )}
+            Download PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={isExporting || !orgId}
+            className="group flex items-center gap-2 rounded-xl border border-[#F0ECEC] bg-white px-4 py-2.5 text-sm font-bold text-[#343434] shadow-sm transition-all hover:bg-[#F9F7F6] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isExporting ? (
+              <Icon icon="solar:spinner-bold" className="h-5 w-5 animate-spin text-[#3D0808]" />
+            ) : (
+              <Icon icon="solar:download-bold" className="h-5 w-5 text-[#3D0808] transition-transform group-hover:-translate-y-0.5" />
+            )}
+            Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isExportingExcel || !orgId}
+            className="group flex items-center gap-2 rounded-xl border border-[#F0ECEC] bg-white px-4 py-2.5 text-sm font-bold text-[#343434] shadow-sm transition-all hover:bg-[#F9F7F6] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isExportingExcel ? (
+              <Icon icon="solar:spinner-bold" className="h-5 w-5 animate-spin text-[#3D0808]" />
+            ) : (
+              <Icon icon="solar:document-text-bold" className="h-5 w-5 text-[#3D0808] transition-transform group-hover:-translate-y-0.5" />
+            )}
+            Export Excel
+          </button>
           <AddMemberDialog />
         </div>
       </div>
 
       {/* Toolbar */}
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mb-6 flex flex-col gap-4 print:hidden lg:flex-row lg:items-center lg:justify-between">
         {/* Search */}
         <div className="relative w-full max-w-md">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -67,7 +167,7 @@ export default function MembersClient() {
           <input
             type="text"
             className="block w-full rounded-xl border border-[#F0ECEC] bg-white p-2.5 pl-10 text-sm font-medium outline-none transition-colors focus:border-[#a12124] focus:ring-1 focus:ring-[#a12124]"
-            placeholder="Search by name or year level..."
+            placeholder="Search by name, email, role, or year level..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -93,7 +193,7 @@ export default function MembersClient() {
 
       {/* Table Area */}
       {isLoading ? (
-        <div className="rounded-2xl border border-[#F0ECEC] bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-[#F0ECEC] bg-white p-6 shadow-sm print:hidden">
           <div className="space-y-4">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-16 w-full" />
@@ -102,7 +202,7 @@ export default function MembersClient() {
           </div>
         </div>
       ) : (
-        <MembersTable members={filteredMembers || []} />
+        <MembersTable members={members || []} />
       )}
     </div>
   );

@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -5,7 +7,16 @@ import * as z from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRecordOptions, recordFullPayment } from "@/lib/api/transactions";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Icon } from "@iconify/react";
 import { useSession } from "next-auth/react";
 
@@ -29,7 +40,7 @@ export default function RecordPaymentDialog() {
   const { data: options } = useQuery({
     queryKey: ["record-options", orgId],
     queryFn: () => getRecordOptions(orgId as string),
-    enabled: open && !!orgId, 
+    enabled: open && !!orgId,
   });
 
   const {
@@ -53,68 +64,73 @@ export default function RecordPaymentDialog() {
     mutationFn: recordFullPayment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success("Full payment recorded securely!");
+      queryClient.invalidateQueries({ queryKey: ["members"] });
+      toast.success("Full payment recorded.");
       setOpen(false);
       reset();
     },
-    onError: () => toast.error("Failed to record payment."),
+    onError: (error: Error) => toast.error(error.message || "Failed to record payment."),
   });
 
-  const onSubmit = (data: FormValues) => {
-    mutation.mutate(data);
-  };
-
-  const inputClass = "flex h-10 w-full rounded-lg border border-[#F0ECEC] bg-white px-3 py-2 text-sm font-medium outline-none transition-colors focus:border-[#a12124] focus:ring-1 focus:ring-[#a12124]";
+  const inputClass =
+    "flex h-10 w-full rounded-lg border border-[#F0ECEC] bg-white px-3 py-2 text-sm font-medium outline-none transition-colors focus:border-[#a12124] focus:ring-1 focus:ring-[#a12124]";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700">
+      <DialogTrigger
+        disabled={!orgId}
+        className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+      >
         <Icon icon="solar:cash-out-bold" className="h-5 w-5" />
         Record Full Payment
       </DialogTrigger>
-      
-      <DialogContent className="sm:max-w-[450px] font-body bg-white border border-[#F0ECEC]">
+
+      <DialogContent className="border border-[#F0ECEC] bg-white font-body sm:max-w-[450px]">
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-bold text-[#343434]">Record Full Payment</DialogTitle>
           <DialogDescription className="text-[#625f5f]">
-            Register a non-installment collection entry securely directly into the active ledger tracking system.
+            Record a direct fund payment for a student in your organization ledger.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-4 flex flex-col gap-4">
+        <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-[#343434]">Member Origin</label>
+            <label className="text-xs font-bold text-[#343434]">Member</label>
             <select {...register("memberId")} className={inputClass}>
               <option value="">-- Choose Member --</option>
-              {options?.members.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
+              {options?.members.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.name}
+                </option>
               ))}
             </select>
-            {errors.memberId && <span className="text-[10px] text-red-500">{errors.memberId.message}</span>}
+            {errors.memberId ? <span className="text-[10px] text-red-500">{errors.memberId.message}</span> : null}
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-[#343434]">Designated Fund Type</label>
+            <label className="text-xs font-bold text-[#343434]">Fund Type</label>
             <select {...register("fundTypeId")} className={inputClass}>
               <option value="">-- Choose Fund --</option>
-              {options?.funds.map((f) => (
-                <option key={f.id} value={f.id}>{f.name}</option>
+              {options?.funds.map((fund) => (
+                <option key={fund.id} value={fund.id}>
+                  {fund.name}
+                </option>
               ))}
             </select>
-            {errors.fundTypeId && <span className="text-[10px] text-red-500">{errors.fundTypeId.message}</span>}
+            {errors.fundTypeId ? <span className="text-[10px] text-red-500">{errors.fundTypeId.message}</span> : null}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-[#343434]">Exact Amount (₱)</label>
-              <input type="number" {...register("amount", { valueAsNumber: true })} className={inputClass} />
-              {errors.amount && <span className="text-[10px] text-red-500">{errors.amount.message}</span>}
-            </div>
-            
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-[#343434]">Target Date</label>
+              <label className="text-xs font-bold text-[#343434]">Exact Amount (PHP)</label>
+              <input type="number" {...register("amount", { valueAsNumber: true })} className={inputClass} />
+              {errors.amount ? <span className="text-[10px] text-red-500">{errors.amount.message}</span> : null}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-[#343434]">Due Date</label>
               <input type="date" {...register("dueDate")} className={inputClass} />
-              {errors.dueDate && <span className="text-[10px] text-red-500">{errors.dueDate.message}</span>}
+              {errors.dueDate ? <span className="text-[10px] text-red-500">{errors.dueDate.message}</span> : null}
             </div>
           </div>
 
@@ -122,8 +138,8 @@ export default function RecordPaymentDialog() {
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-[#343434]">Initial Status</label>
               <select {...register("status")} className={inputClass}>
-                <option value="PAID">Paid (Cleared)</option>
-                <option value="PENDING">Pending (Scheduled)</option>
+                <option value="PAID">Paid</option>
+                <option value="PENDING">Pending</option>
               </select>
             </div>
 
@@ -133,7 +149,7 @@ export default function RecordPaymentDialog() {
             </div>
           </div>
 
-          <DialogFooter className="mt-6 border-t border-[#F0ECEC] pt-6 sm:justify-end gap-3">
+          <DialogFooter className="mt-6 gap-3 border-t border-[#F0ECEC] pt-6 sm:justify-end">
             <DialogClose className="rounded-lg border border-[#F0ECEC] bg-white px-4 py-2 text-sm font-bold text-[#625f5f] hover:bg-[#F9F7F6]">
               Cancel
             </DialogClose>
@@ -143,7 +159,7 @@ export default function RecordPaymentDialog() {
               className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
             >
               <Icon icon="solar:check-circle-bold" className="h-4 w-4" />
-              {mutation.isPending ? "Recording..." : "Verify & Record"}
+              {mutation.isPending ? "Recording..." : "Record Payment"}
             </button>
           </DialogFooter>
         </form>

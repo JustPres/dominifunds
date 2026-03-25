@@ -1,5 +1,3 @@
-// Mock API for Installments Page
-
 export interface InstallmentEntry {
   id: string;
   installmentNo: number;
@@ -46,9 +44,9 @@ export interface MemberOption {
   name: string;
 }
 
-export async function getInstallmentData(): Promise<InstallmentsResponse> {
+export async function getInstallmentData(orgId: string): Promise<InstallmentsResponse> {
   try {
-    const res = await fetch("/api/installments");
+    const res = await fetch(`/api/installments?orgId=${encodeURIComponent(orgId)}`);
     if (!res.ok) throw new Error();
     return res.json();
   } catch {
@@ -59,9 +57,11 @@ export async function getInstallmentData(): Promise<InstallmentsResponse> {
   }
 }
 
-export async function getInstallmentOptions(): Promise<{ funds: FundTypeOption[], members: MemberOption[] }> {
+export async function getInstallmentOptions(
+  orgId: string
+): Promise<{ funds: FundTypeOption[]; members: MemberOption[] }> {
   try {
-    const res = await fetch("/api/installments/options");
+    const res = await fetch(`/api/installments/options?orgId=${encodeURIComponent(orgId)}`);
     if (!res.ok) throw new Error();
     return res.json();
   } catch {
@@ -76,6 +76,7 @@ export async function payInstallment(planId: string, entryId: string): Promise<{
 }
 
 export async function createInstallmentPlan(payload: {
+  orgId: string;
   memberId: string;
   fundTypeId: string;
   totalAmount: number;
@@ -86,8 +87,11 @@ export async function createInstallmentPlan(payload: {
   const res = await fetch("/api/installments", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error("Failed to create plan");
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to create plan");
+  }
   return res.json();
 }

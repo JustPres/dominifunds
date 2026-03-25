@@ -14,6 +14,7 @@ export const authConfig = {
         token.role = user.role;
         token.orgId = user.orgId;
         token.orgRole = user.orgRole;
+        token.yearLevel = user.yearLevel;
       }
       return token;
     },
@@ -24,6 +25,7 @@ export const authConfig = {
       session.user.role = token.role as "OFFICER" | "STUDENT";
       session.user.orgId = token.orgId as string | null;
       session.user.orgRole = token.orgRole as string | null;
+      session.user.yearLevel = token.yearLevel as string | null;
       return session;
     },
   },

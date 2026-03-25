@@ -7,6 +7,7 @@ declare module "next-auth" {
       role: "OFFICER" | "STUDENT";
       orgId: string | null;
       orgRole: string | null;
+      yearLevel: string | null;
     } & DefaultSession["user"];
   }
 
@@ -14,6 +15,7 @@ declare module "next-auth" {
     role: "OFFICER" | "STUDENT";
     orgId: string | null;
     orgRole: string | null;
+    yearLevel: string | null;
   }
 }
 
@@ -23,5 +25,6 @@ declare module "next-auth/jwt" {
     role: "OFFICER" | "STUDENT";
     orgId: string | null;
     orgRole: string | null;
+    yearLevel: string | null;
   }
 }

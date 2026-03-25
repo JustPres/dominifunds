@@ -1,14 +1,22 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 export async function GET(
   request: Request,
   { params }: { params: { orgId: string } }
 ) {
-  const orgId = params.orgId;
+  const session = await auth();
+
+  if (!session?.user || session.user.role !== "OFFICER" || session.user.orgId !== params.orgId) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
 
   const transactions = await prisma.transaction.findMany({
-    where: { member: { orgId } },
+    where: { member: { orgId: params.orgId } },
     include: {
       member: true,
       fundType: true,
@@ -17,7 +25,7 @@ export async function GET(
   });
 
   const fundTypes = await prisma.fundType.findMany({
-    where: { orgId },
+    where: { orgId: params.orgId },
     select: { id: true, name: true },
   });
 
