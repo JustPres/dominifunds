@@ -60,6 +60,6 @@ export function formatFundFrequency(frequency: FundFrequency): string {
     case "PER_EVENT":
       return "Per Event";
     default:
-      return frequency.replace(/_/g, " ");
+      return String(frequency).replace(/_/g, " ");
   }
 }

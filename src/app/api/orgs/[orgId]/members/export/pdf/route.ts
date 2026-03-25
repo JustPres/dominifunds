@@ -6,6 +6,10 @@ import { auth } from "@/lib/auth";
 import { getMemberReport, parseMemberReportFilterStatus } from "@/lib/member-report";
 import { MemberReportPdfDocument } from "@/lib/member-report-pdf";
 
+function toBodyBytes(value: ArrayBuffer | Uint8Array) {
+  return value instanceof ArrayBuffer ? new Uint8Array(value) : Uint8Array.from(value);
+}
+
 export async function GET(
   request: Request,
   { params }: { params: { orgId: string } }
@@ -28,9 +32,10 @@ export async function GET(
       report,
     })
   );
+  const pdfBytes = toBodyBytes(buffer);
   const fileDate = new Date().toISOString().split("T")[0];
 
-  return new Response(buffer, {
+  return new Response(pdfBytes, {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="members-report-${params.orgId}-${fileDate}.pdf"`,

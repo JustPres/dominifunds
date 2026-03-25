@@ -10,6 +10,10 @@ import {
   parseMemberReportFilterStatus,
 } from "@/lib/member-report";
 
+function toBodyBytes(value: ArrayBuffer | Uint8Array) {
+  return value instanceof ArrayBuffer ? new Uint8Array(value) : Uint8Array.from(value);
+}
+
 export async function GET(
   request: Request,
   { params }: { params: { orgId: string } }
@@ -88,9 +92,10 @@ export async function GET(
   sheet.views = [{ state: "frozen", ySplit: 4 }];
 
   const buffer = await workbook.xlsx.writeBuffer();
+  const workbookBytes = toBodyBytes(buffer);
   const fileDate = new Date().toISOString().split("T")[0];
 
-  return new Response(Buffer.from(buffer), {
+  return new Response(workbookBytes, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="members-report-${params.orgId}-${fileDate}.xlsx"`,

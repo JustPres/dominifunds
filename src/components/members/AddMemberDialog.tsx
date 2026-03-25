@@ -40,7 +40,7 @@ export default function AddMemberDialog() {
   });
 
   const mutation = useMutation({
-    mutationFn: (data: AddMemberFormValues) => addMember({ ...data, orgId }),
+    mutationFn: (data: AddMemberFormValues) => addMember({ ...data, orgId: orgId ?? undefined }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members"] });
       toast.success("Member added successfully!");

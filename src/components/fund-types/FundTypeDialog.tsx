@@ -27,7 +27,9 @@ const fundSchema = z.object({
   allowInstallment: z.boolean(),
   maxInstallments: z.number().nullable().optional(),
 }).refine((data) => {
-  if (data.allowInstallment) return data.maxInstallments !== null && data.maxInstallments > 1;
+  if (data.allowInstallment) {
+    return typeof data.maxInstallments === "number" && data.maxInstallments > 1;
+  }
   return true;
 }, {
   message: "Required if installments are allowed",
