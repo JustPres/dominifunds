@@ -24,9 +24,13 @@ model User {
   orgId     String?
   orgRole   String?
   yearLevel String?
+  lastLoginAt DateTime?
 
   transactions     Transaction[]
   installmentPlans InstallmentPlan[]
+  loginVerificationChallenges LoginVerificationChallenge[]
+  trustedDevices TrustedDevice[]
+  loginEvents LoginEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -120,4 +124,88 @@ model InstallmentEntry {
 
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
+}
+
+enum LoginChallengeStatus {
+  PENDING
+  VERIFIED
+  CONSUMED
+  FAILED
+  EXPIRED
+}
+
+enum LoginEventStatus {
+  PASSWORD_FAILED
+  OTP_SENT
+  OTP_FAILED
+  SUCCEEDED
+  SIGNED_OUT
+}
+
+model LoginVerificationChallenge {
+  id                       String               @id @default(auto()) @map("_id") @db.ObjectId
+  userId                   String               @db.ObjectId
+  email                    String
+  role                     Role
+  otpRequired              Boolean              @default(true)
+  status                   LoginChallengeStatus @default(PENDING)
+  codeHash                 String?
+  codeExpiresAt            DateTime?
+  verificationTokenHash    String?
+  verificationTokenExpiresAt DateTime?
+  failedAttempts           Int                  @default(0)
+  lastSentAt               DateTime             @default(now())
+  passwordVerifiedAt       DateTime             @default(now())
+  verifiedAt               DateTime?
+  consumedAt               DateTime?
+  fingerprintHash          String?
+  deviceLabel              String?
+  userAgent                String?
+  platform                 String?
+  language                 String?
+  ipAddress                String?
+  suspiciousReason         String?
+
+  user                     User                 @relation(fields: [userId], references: [id])
+
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+}
+
+model TrustedDevice {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   @db.ObjectId
+  tokenHash       String   @unique
+  fingerprintHash String?
+  label           String?
+  userAgent       String?
+  platform        String?
+  language        String?
+  ipAddress       String?
+  lastSeenAt      DateTime @default(now())
+  expiresAt       DateTime
+  revokedAt       DateTime?
+
+  user            User     @relation(fields: [userId], references: [id])
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model LoginEvent {
+  id          String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String?          @db.ObjectId
+  email       String
+  role        Role?
+  status      LoginEventStatus
+  mfaRequired Boolean          @default(false)
+  deviceLabel String?
+  ipAddress   String?
+  userAgent   String?
+  platform    String?
+  detail      String?
+
+  user        User?            @relation(fields: [userId], references: [id])
+
+  createdAt   DateTime         @default(now())
 }

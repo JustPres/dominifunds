@@ -15,6 +15,7 @@ export const authConfig = {
         token.orgId = user.orgId;
         token.orgRole = user.orgRole;
         token.yearLevel = user.yearLevel;
+        token.lastLoginAt = user.lastLoginAt;
       }
       return token;
     },
@@ -26,6 +27,7 @@ export const authConfig = {
       session.user.orgId = token.orgId as string | null;
       session.user.orgRole = token.orgRole as string | null;
       session.user.yearLevel = token.yearLevel as string | null;
+      session.user.lastLoginAt = token.lastLoginAt as string | null;
       return session;
     },
   },

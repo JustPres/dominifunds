@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 export default NextAuth(authConfig).auth((req) => {
   const { pathname } = req.nextUrl;
+  const wantsAccountSwitch = req.nextUrl.searchParams.get("switch") === "1";
   const isLoggedIn = !!req.auth;
   const role = req.auth?.user?.role as string | undefined;
 
@@ -30,9 +31,14 @@ export default NextAuth(authConfig).auth((req) => {
 
   // Handle Authenticated Users
   if (isLoggedIn) {
-    // Keep auth pages accessible so users can switch accounts intentionally.
-    // Only redirect the root path to the matching workspace.
     if (pathname === "/") {
+      if (role === "STUDENT") {
+        return NextResponse.redirect(new URL("/portal", req.nextUrl.origin));
+      }
+      return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
+    }
+
+    if (isAuthRoute && !(pathname === "/login" && wantsAccountSwitch)) {
       if (role === "STUDENT") {
         return NextResponse.redirect(new URL("/portal", req.nextUrl.origin));
       }

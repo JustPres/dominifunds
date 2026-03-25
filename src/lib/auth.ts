@@ -1,8 +1,8 @@
 import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import prisma from "@/lib/prisma";
+import { consumeVerifiedLoginToken } from "@/lib/auth-login";
+import { Role } from "@prisma/client";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -12,31 +12,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
         role: { label: "Role", type: "text" },
+        verificationToken: { label: "Verification Token", type: "text" },
       },
       async authorize(credentials) {
         const email = credentials?.email as string | undefined;
-        const password = credentials?.password as string | undefined;
         const selectedRole = credentials?.role as string | undefined;
+        const verificationToken = credentials?.verificationToken as string | undefined;
 
-        if (!email || !password || !selectedRole) {
-          throw new Error("Missing required credentials.");
+        if (!email || !selectedRole || !verificationToken) {
+          throw new Error("Missing verified login credentials.");
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email },
-        });
-
-        if (!user || user.role !== selectedRole) {
-          throw new Error("Invalid credentials or role mismatch.");
-        }
-
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-
-        if (!isPasswordValid) {
-          throw new Error("Invalid email or password.");
-        }
+        const user = await consumeVerifiedLoginToken(
+          email,
+          selectedRole as Role,
+          verificationToken
+        );
 
         return {
           id: user.id,
@@ -46,6 +38,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           orgId: user.orgId,
           orgRole: user.orgRole,
           yearLevel: user.yearLevel,
+          lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
         };
       },
     }),
