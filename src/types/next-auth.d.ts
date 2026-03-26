@@ -8,6 +8,8 @@ declare module "next-auth" {
       orgId: string | null;
       orgRole: string | null;
       yearLevel: string | null;
+      officerAccessRole: "TREASURER" | "PRESIDENT" | null;
+      sectionId: string | null;
       lastLoginAt: string | null;
     } & DefaultSession["user"];
   }
@@ -17,6 +19,8 @@ declare module "next-auth" {
     orgId: string | null;
     orgRole: string | null;
     yearLevel: string | null;
+    officerAccessRole: "TREASURER" | "PRESIDENT" | null;
+    sectionId: string | null;
     lastLoginAt: string | null;
   }
 }
@@ -28,6 +32,8 @@ declare module "next-auth/jwt" {
     orgId: string | null;
     orgRole: string | null;
     yearLevel: string | null;
+    officerAccessRole: "TREASURER" | "PRESIDENT" | null;
+    sectionId: string | null;
     lastLoginAt: string | null;
   }
 }

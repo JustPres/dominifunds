@@ -6,6 +6,7 @@ import {
   getKPIMetrics,
   getActivePlans,
   getOverdueMembers,
+  getRecentChanges,
   getRecentPayments,
 } from "@/lib/api/dashboard";
 import WelcomeBanner from "@/components/dashboard/WelcomeBanner";
@@ -40,6 +41,11 @@ export default function DashboardClient() {
     queryFn: getRecentPayments,
   });
 
+  const { data: recentChanges } = useSuspenseQuery({
+    queryKey: ["dashboard", "recent-changes"],
+    queryFn: getRecentChanges,
+  });
+
   if (welcomeData?.memberCount === 0 && kpiData?.totalCollected === 0 && activePlans?.length === 0) {
     return (
       <div className="flex h-[400px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#F0ECEC] bg-white text-center shadow-sm">
@@ -56,7 +62,7 @@ export default function DashboardClient() {
 
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[1.5fr_1fr]">
         <ActivePlansTable data={activePlans} />
-        <RightSideMetrics overdue={overdueMembers} recent={recentPayments} />
+        <RightSideMetrics overdue={overdueMembers} recent={recentPayments} changes={recentChanges} />
       </div>
     </div>
   );

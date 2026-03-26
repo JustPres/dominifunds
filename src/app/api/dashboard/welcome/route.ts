@@ -1,21 +1,25 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 export async function GET() {
-  // For now, derive from the first officer's org
-  const officer = await prisma.user.findFirst({ where: { role: "OFFICER" } });
-  const orgId = officer?.orgId || "";
+  const session = await auth();
+  const orgId = session?.user?.orgId || "";
+
+  if (!session?.user || session.user.role !== "OFFICER" || !orgId) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
 
   const memberCount = await prisma.user.count({
     where: { orgId, role: "STUDENT" },
   });
 
-  const allFunds = await prisma.fundType.findMany({ where: { orgId } });
+  const allFunds = await prisma.fundType.findMany({ where: { orgId, archivedAt: null } });
   const totalExpected = allFunds.reduce((sum, f) => sum + f.amount, 0) * memberCount;
 
   const totalCollected = await prisma.transaction.aggregate({
-    where: { status: "PAID", member: { orgId } },
+    where: { status: "PAID", deletedAt: null, member: { orgId } },
     _sum: { amount: true },
   });
 

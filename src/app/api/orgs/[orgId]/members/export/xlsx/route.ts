@@ -28,12 +28,13 @@ export async function GET(
   const report = await getMemberReport(params.orgId, {
     search: searchParams.get("search") || undefined,
     status: parseMemberReportFilterStatus(searchParams.get("status")),
+    sectionId: searchParams.get("sectionId") || undefined,
   });
 
   const workbook = new Workbook();
   const sheet = workbook.addWorksheet("Members Report");
 
-  sheet.mergeCells("A1:F1");
+  sheet.mergeCells("A1:G1");
   sheet.getCell("A1").value = "DominiFunds Members Payment Standing Report";
   sheet.getCell("A1").font = { size: 16, bold: true, color: { argb: "FFFFFFFF" } };
   sheet.getCell("A1").fill = {

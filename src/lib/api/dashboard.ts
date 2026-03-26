@@ -36,6 +36,15 @@ export interface RecentPayment {
   amount: number;
 }
 
+export interface RecentChange {
+  id: string;
+  action: string;
+  entityType: string;
+  actorName: string;
+  note: string | null;
+  createdAt: string;
+}
+
 export async function getWelcomeMetrics(): Promise<WelcomeMetrics> {
   try {
     const res = await fetch("/api/dashboard/welcome");
@@ -79,6 +88,16 @@ export async function getOverdueMembers(): Promise<OverdueMember[]> {
 export async function getRecentPayments(): Promise<RecentPayment[]> {
   try {
     const res = await fetch("/api/dashboard/recent-payments");
+    if (!res.ok) throw new Error();
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
+export async function getRecentChanges(): Promise<RecentChange[]> {
+  try {
+    const res = await fetch("/api/dashboard/recent-changes");
     if (!res.ok) throw new Error();
     return res.json();
   } catch {

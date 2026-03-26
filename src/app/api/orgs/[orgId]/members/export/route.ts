@@ -31,6 +31,7 @@ export async function GET(
   const report = await getMemberReport(params.orgId, {
     search: searchParams.get("search") || undefined,
     status: parseMemberReportFilterStatus(searchParams.get("status")),
+    sectionId: searchParams.get("sectionId") || undefined,
   });
 
   const csv = [

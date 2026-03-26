@@ -1,10 +1,22 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 export async function GET() {
+  const session = await auth();
+  const orgId = session?.user?.orgId;
+
+  if (!session?.user || session.user.role !== "OFFICER" || !orgId) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+
   const overdueEntries = await prisma.installmentEntry.findMany({
-    where: { status: "OVERDUE" },
+    where: {
+      status: "OVERDUE",
+      deletedAt: null,
+      plan: { member: { orgId } },
+    },
     include: {
       plan: { include: { member: true } },
     },

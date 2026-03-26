@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addMember } from "@/lib/api/members";
+import { createSection, getSections } from "@/lib/api/sections";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Icon } from "@iconify/react";
@@ -13,21 +14,25 @@ const addMemberSchema = z.object({
   name: z.string().min(2, "Name is required (at least 2 characters)"),
   email: z.string().email("Invalid email address"),
   yearLevel: z.enum(["1st", "2nd", "3rd", "4th"]),
-  role: z.enum(["President", "Treasurer", "Secretary", "Member"]),
+  role: z.enum(["Member", "Section Representative", "Committee Lead", "Volunteer"]),
+  sectionId: z.string().optional(),
 });
 
 type AddMemberFormValues = z.infer<typeof addMemberSchema>;
 
 export default function AddMemberDialog() {
   const [open, setOpen] = useState(false);
+  const [newSectionName, setNewSectionName] = useState("");
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const orgId = session?.user?.orgId;
+  const canManage = session?.user?.role === "OFFICER" && session.user.officerAccessRole !== "PRESIDENT";
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<AddMemberFormValues>({
     resolver: zodResolver(addMemberSchema),
@@ -36,13 +41,21 @@ export default function AddMemberDialog() {
       email: "",
       yearLevel: "1st",
       role: "Member",
+      sectionId: "",
     },
+  });
+
+  const { data: sections = [] } = useQuery({
+    queryKey: ["sections", orgId],
+    queryFn: () => getSections(orgId as string),
+    enabled: open && !!orgId,
   });
 
   const mutation = useMutation({
     mutationFn: (data: AddMemberFormValues) => addMember({ ...data, orgId: orgId ?? undefined }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["members"] });
+      queryClient.invalidateQueries({ queryKey: ["members", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Member added successfully!");
       setOpen(false);
       reset();
@@ -52,15 +65,42 @@ export default function AddMemberDialog() {
     },
   });
 
+  const createSectionMutation = useMutation({
+    mutationFn: async () => {
+      if (!orgId) {
+        throw new Error("Missing organization.");
+      }
+
+      return createSection(orgId, {
+        name: newSectionName,
+      });
+    },
+    onSuccess: (section) => {
+      queryClient.invalidateQueries({ queryKey: ["sections", orgId] });
+      setValue("sectionId", section.id);
+      setNewSectionName("");
+      toast.success("Section created.");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Unable to create section.");
+    },
+  });
+
   const onSubmit = (data: AddMemberFormValues) => {
-    mutation.mutate(data);
+    mutation.mutate({
+      ...data,
+      sectionId: data.sectionId || undefined,
+    });
   };
 
   const inputClass = "flex h-10 w-full rounded-lg border border-[#F0ECEC] bg-white px-3 py-2 text-sm font-medium outline-none transition-colors focus:border-[#a12124] focus:ring-1 focus:ring-[#a12124]";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="flex items-center gap-2 rounded-lg bg-[#a12124] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#8a1c1e]">
+      <DialogTrigger
+        disabled={!canManage}
+        className="flex items-center gap-2 rounded-lg bg-[#a12124] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#8a1c1e] disabled:cursor-not-allowed disabled:opacity-60"
+      >
         <Icon icon="solar:user-plus-bold" className="h-5 w-5" />
         Add Member
       </DialogTrigger>
@@ -114,11 +154,47 @@ export default function AddMemberDialog() {
               <label className="text-xs font-bold text-[#343434]">Org Role</label>
               <select {...register("role")} className={inputClass}>
                 <option value="Member">Member</option>
-                <option value="President">President</option>
-                <option value="Treasurer">Treasurer</option>
-                <option value="Secretary">Secretary</option>
+                <option value="Section Representative">Section Representative</option>
+                <option value="Committee Lead">Committee Lead</option>
+                <option value="Volunteer">Volunteer</option>
               </select>
               {errors.role && <span className="text-[11px] font-bold text-red-500">{errors.role.message}</span>}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-[#343434]">Section</label>
+            <select {...register("sectionId")} className={inputClass}>
+              <option value="">Unassigned</option>
+              {sections.map((section) => (
+                <option key={section.id} value={section.id}>
+                  {section.name}
+                </option>
+              ))}
+            </select>
+            {errors.sectionId && <span className="text-[11px] font-bold text-red-500">{errors.sectionId.message}</span>}
+          </div>
+
+          <div className="rounded-xl border border-[#F0ECEC] bg-[#F9F7F6] p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <Icon icon="solar:layers-bold" className="h-4 w-4 text-[#a12124]" />
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#625f5f]">Create Section</p>
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={newSectionName}
+                onChange={(event) => setNewSectionName(event.target.value)}
+                placeholder="e.g. BSIT 3A"
+                className={inputClass}
+              />
+              <button
+                type="button"
+                disabled={!newSectionName.trim() || createSectionMutation.isPending}
+                onClick={() => createSectionMutation.mutate()}
+                className="shrink-0 rounded-lg bg-white px-4 py-2 text-sm font-bold text-[#a12124] border border-[#F0ECEC] hover:bg-[#fff6f4] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {createSectionMutation.isPending ? "Adding..." : "Add"}
+              </button>
             </div>
           </div>
 

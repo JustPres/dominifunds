@@ -3,6 +3,7 @@ export interface InstallmentEntry {
   installmentNo: number;
   amountDue: number;
   dueDate: string;
+  paidAt?: string | null;
   status: "PENDING" | "OVERDUE" | "PAID";
 }
 
@@ -69,8 +70,18 @@ export async function getInstallmentOptions(
   }
 }
 
-export async function payInstallment(planId: string, entryId: string): Promise<{ success: boolean }> {
-  const res = await fetch(`/api/installments/${planId}/entries/${entryId}/pay`, { method: "POST" });
+export async function payInstallment(
+  planId: string,
+  entryId: string,
+  payload?: { paidAt?: string; note?: string }
+): Promise<{ success: boolean }> {
+  const res = await fetch(`/api/installments/${planId}/entries/${entryId}/pay`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload ?? {}),
+  });
   if (!res.ok) throw new Error("Failed to secure payment");
   return res.json();
 }

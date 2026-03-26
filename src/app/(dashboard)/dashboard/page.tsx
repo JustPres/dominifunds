@@ -4,6 +4,7 @@ import {
   getKPIMetrics,
   getActivePlans,
   getOverdueMembers,
+  getRecentChanges,
   getRecentPayments,
 } from "@/lib/api/dashboard";
 import DashboardClient from "./client";
@@ -33,6 +34,10 @@ export default async function DashboardPage() {
     queryClient.prefetchQuery({
       queryKey: ["dashboard", "recent-payments"],
       queryFn: getRecentPayments,
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ["dashboard", "recent-changes"],
+      queryFn: getRecentChanges,
     }),
   ]);
 

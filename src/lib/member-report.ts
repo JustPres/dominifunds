@@ -19,6 +19,7 @@ export const MEMBER_REPORT_FILTER_STATUSES: MemberReportFilterStatus[] = [
 export interface MemberReportFilters {
   search?: string;
   status?: MemberReportFilterStatus | null;
+  sectionId?: string | null;
 }
 
 export interface MemberReportRow {
@@ -27,6 +28,8 @@ export interface MemberReportRow {
   email: string;
   role: string;
   yearLevel: string;
+  sectionId: string | null;
+  sectionName: string;
   totalPaid: number;
   activeInstallmentPlans: number;
   balanceDue: number;
@@ -51,6 +54,7 @@ export interface MemberReportData {
   filters: {
     search: string;
     status: MemberReportFilterStatus;
+    sectionId: string;
   };
   rows: MemberReportRow[];
 }
@@ -59,6 +63,7 @@ export type MemberReportColumnKey =
   | "student"
   | "name"
   | "email"
+  | "sectionName"
   | "role"
   | "yearLevel"
   | "status"
@@ -98,6 +103,8 @@ export function parseMemberReportFilterStatus(
 export const MEMBER_REPORT_EXPORT_COLUMNS: MemberReportColumn[] = [
   { key: "name", header: "Student Name", width: 24 },
   { key: "email", header: "Email", width: 28 },
+  { key: "sectionName", header: "Section", width: 16 },
+  { key: "status", header: "Directory Status", width: 18 },
   { key: "role", header: "Role", width: 18 },
   { key: "yearLevel", header: "Year Level", width: 16 },
   { key: "overallStatus", header: "Standing", width: 18 },
@@ -131,6 +138,7 @@ function normalizeFilters(filters: MemberReportFilters = {}) {
   return {
     search: filters.search?.trim() ?? "",
     status: filters.status && filters.status !== "All" ? filters.status : "All",
+    sectionId: filters.sectionId?.trim() ?? "",
   } as const;
 }
 
@@ -146,7 +154,7 @@ function formatPaymentType(type?: string): string {
 function matchesSearch(row: MemberReportRow, search: string) {
   if (!search) return true;
 
-  const haystack = [row.name, row.email, row.role, row.yearLevel]
+  const haystack = [row.name, row.email, row.role, row.yearLevel, row.sectionName]
     .join(" ")
     .toLowerCase();
 
@@ -161,6 +169,10 @@ function buildOverdueSummary(overdueEntries: number, overdueTransactions: number
   return `${overdueEntries} installments / ${overdueTransactions} records`;
 }
 
+function getEffectivePaymentDate(date?: Date | null, fallback?: Date | null) {
+  return date ?? fallback ?? null;
+}
+
 export function getMemberReportColumnValue(
   row: MemberReportRow,
   key: MemberReportColumnKey
@@ -172,6 +184,8 @@ export function getMemberReportColumnValue(
       return row.name;
     case "email":
       return row.email;
+    case "sectionName":
+      return row.sectionName;
     case "role":
       return row.role;
     case "yearLevel":
@@ -219,6 +233,7 @@ export async function syncInstallmentStatuses(orgId?: string) {
   const overdueTransactions = await prisma.transaction.findMany({
     where: {
       status: "PENDING",
+      deletedAt: null,
       dueDate: { lt: now },
       ...(orgId ? { member: { orgId } } : {}),
     },
@@ -237,6 +252,7 @@ export async function syncInstallmentStatuses(orgId?: string) {
   const overdueEntries = await prisma.installmentEntry.findMany({
     where: {
       status: "PENDING",
+      deletedAt: null,
       dueDate: { lt: now },
       ...(orgId ? { plan: { member: { orgId } } } : {}),
     },
@@ -255,10 +271,12 @@ export async function syncInstallmentStatuses(orgId?: string) {
   const activePlans = await prisma.installmentPlan.findMany({
     where: {
       status: "ACTIVE",
+      deletedAt: null,
       ...(orgId ? { member: { orgId } } : {}),
     },
     include: {
       entries: {
+        where: { deletedAt: null },
         select: { status: true },
       },
     },
@@ -287,14 +305,22 @@ export async function getMemberReport(
   const normalizedFilters = normalizeFilters(filters);
 
   const members = await prisma.user.findMany({
-    where: orgId ? { role: "STUDENT", orgId } : { role: "STUDENT" },
+    where: {
+      role: "STUDENT",
+      ...(orgId ? { orgId } : {}),
+      ...(normalizedFilters.sectionId ? { sectionId: normalizedFilters.sectionId } : {}),
+    },
     include: {
+      section: true,
       transactions: {
+        where: { deletedAt: null },
         orderBy: { createdAt: "desc" },
       },
       installmentPlans: {
+        where: { deletedAt: null },
         include: {
           entries: {
+            where: { deletedAt: null },
             orderBy: { dueDate: "asc" },
           },
         },
@@ -306,9 +332,15 @@ export async function getMemberReport(
 
   const rows = members
     .map((member) => {
-      const paidTransactions = member.transactions.filter((transaction) => transaction.status === "PAID");
-      const overdueTransactions = member.transactions.filter((transaction) => transaction.status === "OVERDUE");
-      const outstandingTransactions = member.transactions.filter(
+      const transactions = [...member.transactions].sort((left, right) => {
+        const leftTime = getEffectivePaymentDate(left.paidAt, left.createdAt)?.getTime() ?? 0;
+        const rightTime = getEffectivePaymentDate(right.paidAt, right.createdAt)?.getTime() ?? 0;
+        return rightTime - leftTime;
+      });
+
+      const paidTransactions = transactions.filter((transaction) => transaction.status === "PAID");
+      const overdueTransactions = transactions.filter((transaction) => transaction.status === "OVERDUE");
+      const outstandingTransactions = transactions.filter(
         (transaction) => transaction.status === "PENDING" || transaction.status === "OVERDUE"
       );
 
@@ -375,18 +407,24 @@ export async function getMemberReport(
         email: member.email,
         role: resolveStudentOrgRole(member.orgRole),
         yearLevel: formatYearLevelLabel(normalizedYearLevel),
+        sectionId: member.sectionId ?? null,
+        sectionName: member.section?.name ?? "Unassigned",
         totalPaid,
         activeInstallmentPlans: activePlans.length,
         balanceDue,
         status,
         overallStatus,
         paymentMode,
-        recentPaymentDate: formatDate(recentPayment?.createdAt),
+        recentPaymentDate: formatDate(getEffectivePaymentDate(recentPayment?.paidAt, recentPayment?.createdAt) ?? undefined),
         recentPaymentType: recentPayment?.type || "",
         recentPaymentTypeLabel: formatPaymentType(recentPayment?.type),
         recentPaymentAmount: recentPayment?.amount || 0,
-        recentFullPaymentDate: formatDate(fullPayments[0]?.createdAt),
-        recentInstallmentPaymentDate: formatDate(installmentPayments[0]?.createdAt),
+        recentFullPaymentDate: formatDate(
+          getEffectivePaymentDate(fullPayments[0]?.paidAt, fullPayments[0]?.createdAt) ?? undefined
+        ),
+        recentInstallmentPaymentDate: formatDate(
+          getEffectivePaymentDate(installmentPayments[0]?.paidAt, installmentPayments[0]?.createdAt) ?? undefined
+        ),
         overdueEntries: overdueEntries.length,
         overdueTransactions: overdueTransactions.length,
         overdueSummary: buildOverdueSummary(overdueEntries.length, overdueTransactions.length),

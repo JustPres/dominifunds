@@ -19,14 +19,13 @@ function normalizeYearLevel(value) {
 }
 
 async function backfillUsers() {
-  const users = await prisma.user.findMany({
+  let updatedCount = 0;
+  const studentUsers = await prisma.user.findMany({
     where: { role: "STUDENT" },
     select: { id: true, orgRole: true, yearLevel: true },
   });
 
-  let updatedCount = 0;
-
-  for (const user of users) {
+  for (const user of studentUsers) {
     const yearLevel = normalizeYearLevel(user.yearLevel) ?? normalizeYearLevel(user.orgRole);
     const hasYearLevelInRole = normalizeYearLevel(user.orgRole) !== null;
     const nextOrgRole = !user.orgRole || hasYearLevelInRole ? "Member" : user.orgRole;
@@ -38,6 +37,29 @@ async function backfillUsers() {
           yearLevel,
           orgRole: nextOrgRole,
         },
+      });
+      updatedCount += 1;
+    }
+  }
+
+  const officers = await prisma.user.findMany({
+    where: { role: "OFFICER" },
+    select: { id: true, orgRole: true, officerAccessRole: true },
+  });
+
+  for (const officer of officers) {
+    const normalizedRole = String(officer.orgRole || "").trim().toUpperCase();
+    const inferredOfficerRole =
+      normalizedRole === "TREASURER"
+        ? "TREASURER"
+        : normalizedRole === "PRESIDENT"
+        ? "PRESIDENT"
+        : null;
+
+    if (inferredOfficerRole && officer.officerAccessRole !== inferredOfficerRole) {
+      await prisma.user.update({
+        where: { id: officer.id },
+        data: { officerAccessRole: inferredOfficerRole },
       });
       updatedCount += 1;
     }
@@ -89,9 +111,36 @@ async function backfillFunds() {
 async function main() {
   const userUpdates = await backfillUsers();
   const fundUpdates = await backfillFunds();
+  const transactionsToBackfill = await prisma.transaction.findMany({
+    where: { paidAt: null },
+    select: { id: true, createdAt: true },
+  });
+  const paidEntriesToBackfill = await prisma.installmentEntry.findMany({
+    where: {
+      paidAt: null,
+      status: "PAID",
+    },
+    select: { id: true, updatedAt: true },
+  });
+
+  for (const transaction of transactionsToBackfill) {
+    await prisma.transaction.update({
+      where: { id: transaction.id },
+      data: { paidAt: transaction.createdAt },
+    });
+  }
+
+  for (const entry of paidEntriesToBackfill) {
+    await prisma.installmentEntry.update({
+      where: { id: entry.id },
+      data: { paidAt: entry.updatedAt },
+    });
+  }
 
   console.log(`Updated ${userUpdates} student records.`);
   console.log(`Updated ${fundUpdates} fund records.`);
+  console.log(`Updated ${transactionsToBackfill.length} transactions with fallback paid dates.`);
+  console.log(`Updated ${paidEntriesToBackfill.length} installment entries with fallback paid dates.`);
 }
 
 main()

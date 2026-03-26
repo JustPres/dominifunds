@@ -24,7 +24,8 @@ const paymentSchema = z.object({
   memberId: z.string().min(1, "Select a member"),
   fundTypeId: z.string().min(1, "Select a fund type"),
   amount: z.number().positive("Must be greater than 0"),
-  dueDate: z.string().min(1, "Date required"),
+  paidAt: z.string().min(1, "Payment date required"),
+  dueDate: z.string().optional(),
   status: z.enum(["PAID", "PENDING"]),
   note: z.string().optional(),
 });
@@ -36,6 +37,7 @@ export default function RecordPaymentDialog() {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const orgId = session?.user?.orgId;
+  const canManage = session?.user?.role === "OFFICER" && session.user.officerAccessRole !== "PRESIDENT";
 
   const { data: options } = useQuery({
     queryKey: ["record-options", orgId],
@@ -54,7 +56,8 @@ export default function RecordPaymentDialog() {
       memberId: "",
       fundTypeId: "",
       amount: 0,
-      dueDate: new Date().toISOString().split("T")[0],
+      paidAt: new Date().toISOString().split("T")[0],
+      dueDate: "",
       status: "PAID",
       note: "",
     },
@@ -63,8 +66,9 @@ export default function RecordPaymentDialog() {
   const mutation = useMutation({
     mutationFn: recordFullPayment,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["members"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["members", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Full payment recorded.");
       setOpen(false);
       reset();
@@ -78,7 +82,7 @@ export default function RecordPaymentDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
-        disabled={!orgId}
+        disabled={!orgId || !canManage}
         className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <Icon icon="solar:cash-out-bold" className="h-5 w-5" />
@@ -128,9 +132,9 @@ export default function RecordPaymentDialog() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-[#343434]">Due Date</label>
-              <input type="date" {...register("dueDate")} className={inputClass} />
-              {errors.dueDate ? <span className="text-[10px] text-red-500">{errors.dueDate.message}</span> : null}
+              <label className="text-xs font-bold text-[#343434]">Payment Date</label>
+              <input type="date" {...register("paidAt")} className={inputClass} />
+              {errors.paidAt ? <span className="text-[10px] text-red-500">{errors.paidAt.message}</span> : null}
             </div>
           </div>
 
@@ -144,9 +148,14 @@ export default function RecordPaymentDialog() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-[#343434]">Note (Optional)</label>
-              <input {...register("note")} className={inputClass} placeholder="e.g. Bank Transfer" />
+              <label className="text-xs font-bold text-[#343434]">Scheduled Due Date</label>
+              <input type="date" {...register("dueDate")} className={inputClass} />
             </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-[#343434]">Note (Optional)</label>
+            <input {...register("note")} className={inputClass} placeholder="e.g. Collected during Saturday run" />
           </div>
 
           <DialogFooter className="mt-6 gap-3 border-t border-[#F0ECEC] pt-6 sm:justify-end">

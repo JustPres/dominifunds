@@ -12,6 +12,7 @@ export default async function MembersReportPrintPage({
   searchParams: {
     search?: string;
     status?: string;
+    sectionId?: string;
     autoprint?: string;
   };
 }) {
@@ -28,6 +29,7 @@ export default async function MembersReportPrintPage({
   const report = await getMemberReport(session.user.orgId || undefined, {
     search: searchParams.search,
     status: parseMemberReportFilterStatus(searchParams.status),
+    sectionId: searchParams.sectionId,
   });
 
   return (

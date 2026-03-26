@@ -6,6 +6,7 @@ import { Icon } from "@iconify/react";
 import { format } from "date-fns";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 import {
   Dialog,
   DialogClose,
@@ -24,19 +25,26 @@ const currencyFormatter = new Intl.NumberFormat("en-PH", {
 
 export default function InstallmentPlanCard({ plan }: { plan: InstallmentPlan }) {
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const canManage = session?.user?.role === "OFFICER" && session.user.officerAccessRole !== "PRESIDENT";
   const [selectedEntry, setSelectedEntry] = useState<{
     id: string;
     amount: number;
     date: string;
     no: number;
   } | null>(null);
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
 
   const payMutation = useMutation({
-    mutationFn: (entryId: string) => payInstallment(plan.id, entryId),
+    mutationFn: (entryId: string) => payInstallment(plan.id, entryId, { paidAt: paymentDate }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["installments"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["members"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Installment marked as paid.");
       setSelectedEntry(null);
+      setPaymentDate(new Date().toISOString().split("T")[0]);
     },
     onError: () => toast.error("Failed to process payment."),
   });
@@ -109,7 +117,7 @@ export default function InstallmentPlanCard({ plan }: { plan: InstallmentPlan })
                   {entry.status}
                 </span>
 
-                {entry.status !== "PAID" ? (
+                {entry.status !== "PAID" && canManage ? (
                   <button
                     onClick={() =>
                       setSelectedEntry({
@@ -153,6 +161,15 @@ export default function InstallmentPlanCard({ plan }: { plan: InstallmentPlan })
                 <span className="text-xs font-bold text-[#343434]">
                   {format(new Date(selectedEntry.date), "MMMM d, yyyy")}
                 </span>
+              </div>
+              <div className="mt-3 flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-[#625f5f]">Actual Payment Date</label>
+                <input
+                  type="date"
+                  value={paymentDate}
+                  onChange={(event) => setPaymentDate(event.target.value)}
+                  className="flex h-10 w-full rounded-lg border border-[#F0ECEC] bg-white px-3 py-2 text-sm font-medium outline-none transition-colors focus:border-[#a12124] focus:ring-1 focus:ring-[#a12124]"
+                />
               </div>
             </div>
           ) : null}

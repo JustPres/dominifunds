@@ -18,6 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Icon } from "@iconify/react";
+import { useSession } from "next-auth/react";
 
 const currencyFormatter = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -43,6 +44,8 @@ interface AddInstallmentDialogProps {
 export default function AddInstallmentDialog({ orgId }: AddInstallmentDialogProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const canManage = session?.user?.role === "OFFICER" && session.user.officerAccessRole !== "PRESIDENT";
 
   const { data: options } = useQuery({
     queryKey: ["installment-options", orgId],
@@ -100,6 +103,8 @@ export default function AddInstallmentDialog({ orgId }: AddInstallmentDialogProp
     mutationFn: (data: FormValues) => createInstallmentPlan({ ...data, orgId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["installments", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["members", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Installment plan created.");
       setOpen(false);
       reset();
@@ -113,7 +118,7 @@ export default function AddInstallmentDialog({ orgId }: AddInstallmentDialogProp
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
-        disabled={!orgId}
+        disabled={!orgId || !canManage}
         className="flex items-center gap-2 rounded-lg bg-[#a12124] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#8a1c1e] disabled:cursor-not-allowed disabled:opacity-60"
       >
         <Icon icon="solar:folder-error-bold" className="h-5 w-5" />
@@ -203,7 +208,7 @@ export default function AddInstallmentDialog({ orgId }: AddInstallmentDialogProp
             </DialogClose>
             <button
               type="submit"
-              disabled={mutation.isPending || !orgId}
+              disabled={mutation.isPending || !orgId || !canManage}
               className="rounded-lg bg-[#a12124] px-4 py-2 text-sm font-bold text-white hover:bg-[#8a1c1e] disabled:opacity-50"
             >
               {mutation.isPending ? "Creating..." : "Create Plan"}

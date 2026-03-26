@@ -2,17 +2,17 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
 import prisma from "@/lib/prisma";
 
 export async function GET(
   request: Request,
   { params }: { params: { orgId: string } }
 ) {
-  const session = await auth();
+  const authorization = await getAuthorizedOfficerSession(params.orgId);
 
-  if (!session?.user || session.user.role !== "OFFICER" || session.user.orgId !== params.orgId) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (!authorization.ok) {
+    return NextResponse.json({ message: authorization.message }, { status: authorization.status });
   }
 
   const [funds, members] = await Promise.all([

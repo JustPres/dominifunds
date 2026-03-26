@@ -15,6 +15,11 @@ enum Role {
   STUDENT
 }
 
+enum OfficerAccessRole {
+  TREASURER
+  PRESIDENT
+}
+
 model User {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
@@ -24,13 +29,18 @@ model User {
   orgId     String?
   orgRole   String?
   yearLevel String?
+  officerAccessRole OfficerAccessRole?
+  sectionId  String?  @db.ObjectId
   lastLoginAt DateTime?
 
+  section          Section? @relation(fields: [sectionId], references: [id])
   transactions     Transaction[]
   installmentPlans InstallmentPlan[]
+  memberCollectionSchedules CollectionSchedule[] @relation("MemberCollectionSchedules")
   loginVerificationChallenges LoginVerificationChallenge[]
   trustedDevices TrustedDevice[]
   loginEvents LoginEvent[]
+  activityLogs ActivityLog[] @relation("ActivityActor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -77,15 +87,19 @@ model Transaction {
   id              String            @id @default(auto()) @map("_id") @db.ObjectId
   memberId        String            @db.ObjectId
   fundTypeId      String            @db.ObjectId
+  collectionPeriodId String?        @db.ObjectId
   type            TransactionType
   status          TransactionStatus @default(PAID)
   amount          Float
   dueDate         DateTime?
+  paidAt          DateTime?
   note            String?
   installmentInfo String?
+  deletedAt       DateTime?
 
   member          User              @relation(fields: [memberId], references: [id])
   fundType        FundType          @relation(fields: [fundTypeId], references: [id])
+  collectionPeriod CollectionPeriod? @relation(fields: [collectionPeriodId], references: [id])
 
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
@@ -101,11 +115,14 @@ model InstallmentPlan {
   id          String       @id @default(auto()) @map("_id") @db.ObjectId
   memberId    String       @db.ObjectId
   fundTypeId  String       @db.ObjectId
+  collectionPeriodId String? @db.ObjectId
   periodLabel String?
   status      PlanStatus   @default(ACTIVE)
+  deletedAt   DateTime?
 
   member      User         @relation(fields: [memberId], references: [id])
   fundType    FundType     @relation(fields: [fundTypeId], references: [id])
+  collectionPeriod CollectionPeriod? @relation(fields: [collectionPeriodId], references: [id])
   entries     InstallmentEntry[]
 
   createdAt   DateTime     @default(now())
@@ -119,11 +136,64 @@ model InstallmentEntry {
   dueDate     DateTime
   status      TransactionStatus @default(PENDING)
   title       String?
+  paidAt      DateTime?
+  deletedAt   DateTime?
 
   plan        InstallmentPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
 
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
+}
+
+model Section {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  orgId     String
+  name      String
+  deletedAt DateTime?
+
+  members   User[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CollectionPeriod {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  orgId     String
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(false)
+
+  schedules CollectionSchedule[]
+  transactions Transaction[]
+  installmentPlans InstallmentPlan[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum CollectionScheduleScope {
+  ORG_DEFAULT
+  MEMBER_OVERRIDE
+}
+
+model CollectionSchedule {
+  id               String                  @id @default(auto()) @map("_id") @db.ObjectId
+  orgId            String
+  collectionPeriodId String                @db.ObjectId
+  memberId         String?                 @db.ObjectId
+  scope            CollectionScheduleScope @default(ORG_DEFAULT)
+  name             String?
+  weekdays         Int[]
+  note             String?
+  deletedAt        DateTime?
+
+  collectionPeriod CollectionPeriod        @relation(fields: [collectionPeriodId], references: [id])
+  member           User?                   @relation("MemberCollectionSchedules", fields: [memberId], references: [id])
+
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
 }
 
 enum LoginChallengeStatus {
@@ -140,6 +210,27 @@ enum LoginEventStatus {
   OTP_FAILED
   SUCCEEDED
   SIGNED_OUT
+}
+
+enum ActivityEntityType {
+  FUND_TYPE
+  TRANSACTION
+  INSTALLMENT_PLAN
+  INSTALLMENT_ENTRY
+  SECTION
+  COLLECTION_PERIOD
+  COLLECTION_SCHEDULE
+  MEMBER
+}
+
+enum ActivityAction {
+  CREATE
+  UPDATE
+  DELETE
+  RESTORE
+  PAYMENT_RECORD
+  INSTALLMENT_RECORD
+  STATUS_CHANGE
 }
 
 model LoginVerificationChallenge {
@@ -208,4 +299,21 @@ model LoginEvent {
   user        User?            @relation(fields: [userId], references: [id])
 
   createdAt   DateTime         @default(now())
+}
+
+model ActivityLog {
+  id                 String            @id @default(auto()) @map("_id") @db.ObjectId
+  orgId              String
+  actorUserId        String?           @db.ObjectId
+  actorOfficerRole   OfficerAccessRole?
+  entityType         ActivityEntityType
+  entityId           String
+  action             ActivityAction
+  note               String?
+  beforeSnapshot     Json?
+  afterSnapshot      Json?
+
+  actor              User?             @relation("ActivityActor", fields: [actorUserId], references: [id])
+
+  createdAt          DateTime          @default(now())
 }

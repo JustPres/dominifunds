@@ -3,6 +3,7 @@ import { authConfig } from "./auth.config";
 import Credentials from "next-auth/providers/credentials";
 import { consumeVerifiedLoginToken } from "@/lib/auth-login";
 import { Role } from "@prisma/client";
+import { inferOfficerAccessRole } from "@/lib/officer-access";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -38,6 +39,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           orgId: user.orgId,
           orgRole: user.orgRole,
           yearLevel: user.yearLevel,
+          officerAccessRole: inferOfficerAccessRole(user.officerAccessRole, user.orgRole),
+          sectionId: user.sectionId,
           lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
         };
       },

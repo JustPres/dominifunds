@@ -2,26 +2,20 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { createActivityLog } from "@/lib/activity-log";
+import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
+import { getSessionOfficerAccessRole } from "@/lib/officer-access";
 import prisma from "@/lib/prisma";
 import { serializeFundType, sortSerializedFundTypes } from "@/lib/fund-type-utils";
-
-function isAuthorized(role?: string, sessionOrgId?: string | null, requestedOrgId?: string) {
-  return role === "OFFICER" && sessionOrgId === requestedOrgId;
-}
-
-function canReadOrgFunds(sessionOrgId?: string | null, requestedOrgId?: string) {
-  return sessionOrgId === requestedOrgId;
-}
 
 export async function GET(
   request: Request,
   { params }: { params: { orgId: string } }
 ) {
-  const session = await auth();
+  const authorization = await getAuthorizedOfficerSession(params.orgId);
 
-  if (!canReadOrgFunds(session?.user?.orgId, params.orgId)) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (!authorization.ok) {
+    return NextResponse.json({ message: authorization.message }, { status: authorization.status });
   }
 
   const { searchParams } = new URL(request.url);
@@ -61,10 +55,10 @@ export async function POST(
   request: Request,
   { params }: { params: { orgId: string } }
 ) {
-  const session = await auth();
+  const authorization = await getAuthorizedOfficerSession(params.orgId, { requireManager: true });
 
-  if (!isAuthorized(session?.user?.role, session?.user?.orgId, params.orgId)) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (!authorization.ok) {
+    return NextResponse.json({ message: authorization.message }, { status: authorization.status });
   }
 
   const body = await request.json();
@@ -101,6 +95,17 @@ export async function POST(
         },
       },
     },
+  });
+
+  await createActivityLog({
+    orgId: params.orgId,
+    actorUserId: authorization.session.user.id,
+    actorOfficerRole: getSessionOfficerAccessRole(authorization.session.user),
+    entityType: "FUND_TYPE",
+    entityId: fundType.id,
+    action: "CREATE",
+    note: "Fund type created.",
+    afterSnapshot: serializeFundType(fundType),
   });
 
   return NextResponse.json(serializeFundType(fundType), { status: 201 });

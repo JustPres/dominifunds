@@ -10,6 +10,7 @@ import {
   openMembersPrintReport,
   type MemberReportFilterStatus,
 } from "@/lib/api/members";
+import { getSections } from "@/lib/api/sections";
 import { Icon } from "@iconify/react";
 import { useSession } from "next-auth/react";
 import MembersTable from "@/components/members/MembersTable";
@@ -20,18 +21,27 @@ import { toast } from "sonner";
 export default function MembersClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<MemberReportFilterStatus>("All");
+  const [sectionId, setSectionId] = useState("ALL");
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const { data: session } = useSession();
   const orgId = session?.user?.orgId;
   const deferredSearchQuery = useDeferredValue(searchQuery);
+  const deferredSectionId = useDeferredValue(sectionId);
+
+  const { data: sections = [] } = useQuery({
+    queryKey: ["sections", orgId],
+    queryFn: () => getSections(orgId as string),
+    enabled: !!orgId,
+  });
 
   const { data: members, isLoading } = useQuery({
-    queryKey: ["members", orgId, deferredSearchQuery, filter],
+    queryKey: ["members", orgId, deferredSearchQuery, filter, deferredSectionId],
     queryFn: () => getMembers(orgId as string, {
       search: deferredSearchQuery,
       status: filter,
+      sectionId: deferredSectionId === "ALL" ? undefined : deferredSectionId,
     }),
     enabled: !!orgId,
   });
@@ -40,6 +50,7 @@ export default function MembersClient() {
   const activeFilters = {
     search: deferredSearchQuery,
     status: filter,
+    sectionId: deferredSectionId === "ALL" ? undefined : deferredSectionId,
   };
 
   const handleExport = async () => {
@@ -160,6 +171,7 @@ export default function MembersClient() {
       {/* Toolbar */}
       <div className="mb-6 flex flex-col gap-4 print:hidden lg:flex-row lg:items-center lg:justify-between">
         {/* Search */}
+        <div className="flex w-full flex-col gap-3 md:flex-row md:items-center">
         <div className="relative w-full max-w-md">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
             <Icon icon="solar:magnifer-bold" className="h-5 w-5 text-[#625f5f]/50" />
@@ -171,6 +183,19 @@ export default function MembersClient() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+        </div>
+          <select
+            value={sectionId}
+            onChange={(event) => setSectionId(event.target.value)}
+            className="h-11 rounded-xl border border-[#F0ECEC] bg-white px-3 text-sm font-medium text-[#343434] outline-none transition-colors focus:border-[#a12124] focus:ring-1 focus:ring-[#a12124]"
+          >
+            <option value="ALL">All Sections</option>
+            {sections.map((section) => (
+              <option key={section.id} value={section.id}>
+                {section.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Filter Pills */}

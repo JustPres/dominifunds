@@ -11,6 +11,8 @@ export interface Member {
   email: string;
   role: string;
   yearLevel: string;
+  sectionId?: string | null;
+  sectionName?: string;
   totalPaid: number;
   activeInstallmentPlans: number;
   balanceDue: number;
@@ -30,11 +32,14 @@ export interface Member {
 
 export interface AddMemberInput extends Pick<Member, "name" | "email" | "role" | "yearLevel"> {
   orgId?: string;
+  sectionId?: string | null;
+  note?: string;
 }
 
 export interface MemberReportFilters {
   search?: string;
   status?: MemberReportFilterStatus;
+  sectionId?: string;
 }
 
 // Mocks removed
@@ -50,6 +55,10 @@ function buildMemberReportQuery(filters: MemberReportFilters = {}) {
 
   if (filters.status && filters.status !== "All") {
     params.set("status", filters.status);
+  }
+
+  if (filters.sectionId?.trim()) {
+    params.set("sectionId", filters.sectionId.trim());
   }
 
   return params.toString();
@@ -131,6 +140,10 @@ export function openMembersPrintReport(filters: MemberReportFilters = {}) {
 
   if (filters.status && filters.status !== "All") {
     params.set("status", filters.status);
+  }
+
+  if (filters.sectionId?.trim()) {
+    params.set("sectionId", filters.sectionId.trim());
   }
 
   params.set("autoprint", "1");

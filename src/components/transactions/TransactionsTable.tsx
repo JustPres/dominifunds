@@ -58,7 +58,7 @@ export default function TransactionsTable({ transactions }: TransactionsTablePro
                 <th className="px-4 py-4 font-semibold text-[#625f5f]">Fund Type</th>
                 <th className="px-4 py-4 font-semibold text-[#625f5f]">Installment Info</th>
                 <th className="px-4 py-4 text-right font-semibold text-[#625f5f]">Amount</th>
-                <th className="px-4 py-4 font-semibold text-[#625f5f]">Date</th>
+                <th className="px-4 py-4 font-semibold text-[#625f5f]">Paid At</th>
                 <th className="px-4 py-4 font-semibold text-[#625f5f]">Note</th>
                 <th className="py-4 pl-4 pr-6 text-center font-semibold text-[#625f5f]">Status</th>
               </tr>

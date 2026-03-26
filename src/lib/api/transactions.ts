@@ -12,6 +12,7 @@ export interface Transaction {
   installmentInfo?: string; // e.g. "Installment 2 of 3"
   amount: number;
   date: string;
+  dueDate?: string;
   note?: string;
   status: TransactionStatus;
 }
@@ -62,7 +63,8 @@ export async function recordFullPayment(payload: {
   fundTypeId: string;
   amount: number;
   status: TransactionStatus;
-  dueDate: string;
+  paidAt: string;
+  dueDate?: string;
   note?: string;
 }): Promise<Transaction> {
   const res = await fetch(`/api/transactions`, {

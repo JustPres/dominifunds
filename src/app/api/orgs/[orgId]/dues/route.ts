@@ -1,105 +1,138 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { getCollectionScheduleSnapshot, getDailyCollectionRoster, isoDate } from "@/lib/collection-scheduling";
+import { getMemberReport } from "@/lib/member-report";
+import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
+
+function enumerateMonthDays(year: number, month: number) {
+  const dates: Date[] = [];
+  const current = new Date(year, month - 1, 1);
+
+  while (current.getMonth() === month - 1) {
+    dates.push(new Date(current));
+    current.setDate(current.getDate() + 1);
+  }
+
+  return dates;
+}
 
 export async function GET(
   request: Request,
   { params }: { params: { orgId: string } }
 ) {
+  const authorization = await getAuthorizedOfficerSession(params.orgId);
+
+  if (!authorization.ok) {
+    return NextResponse.json({ message: authorization.message }, { status: authorization.status });
+  }
+
   const { searchParams } = new URL(request.url);
-  const month = searchParams.get("month");
-  const year = searchParams.get("year");
-  const orgId = params.orgId;
+  const month = Number(searchParams.get("month"));
+  const year = Number(searchParams.get("year"));
 
-  if (!month || !year) {
-    return NextResponse.json({ duesByDate: {}, summary: { installmentsCount: 0, fullPaymentsCount: 0, fullyCurrentMembers: 0 } });
-  }
-
-  const monthNum = parseInt(month, 10);
-  const yearNum = parseInt(year, 10);
-
-  const startDate = new Date(yearNum, monthNum - 1, 1);
-  const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59);
-
-  // Get installment entries due this month for members in this org
-  const installmentEntries = await prisma.installmentEntry.findMany({
-    where: {
-      dueDate: { gte: startDate, lte: endDate },
-      plan: {
-        member: { orgId },
+  if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(year) || year < 2000) {
+    return NextResponse.json({
+      duesByDate: {},
+      summary: {
+        scheduledDaysCount: 0,
+        installmentCount: 0,
+        fullPaymentsCount: 0,
+        membersScheduled: 0,
+        fullyCurrentMembers: 0,
       },
-    },
-    include: {
-      plan: {
-        include: {
-          member: true,
-          fundType: true,
-          entries: true,
-        },
-      },
-    },
-  });
-
-  // Get full payment transactions due this month
-  const fullPayments = await prisma.transaction.findMany({
-    where: {
-      type: "FULL_PAYMENT",
-      createdAt: { gte: startDate, lte: endDate },
-      member: { orgId },
-    },
-    include: {
-      member: true,
-      fundType: true,
-    },
-  });
-
-  const duesByDate: Record<string, { dateString: string; items: unknown[] }> = {};
-
-  // Map installment entries
-  for (const entry of installmentEntries) {
-    const dateStr = entry.dueDate.toISOString().split("T")[0];
-    if (!duesByDate[dateStr]) {
-      duesByDate[dateStr] = { dateString: dateStr, items: [] };
-    }
-    const entryIndex = entry.plan.entries.findIndex((e) => e.id === entry.id) + 1;
-    const totalEntries = entry.plan.entries.length;
-
-    duesByDate[dateStr].items.push({
-      id: entry.id,
-      memberId: entry.plan.memberId,
-      memberName: entry.plan.member.name,
-      fundType: entry.plan.fundType.name,
-      dueType: "INSTALLMENT",
-      installmentInfo: `Installment ${entryIndex} of ${totalEntries}`,
-      amountDue: entry.amountDue,
+      activePeriod: null,
+      schedules: [],
+      sectionProgress: [],
     });
   }
 
-  // Map full payments
-  for (const tx of fullPayments) {
-    const dateStr = tx.createdAt.toISOString().split("T")[0];
-    if (!duesByDate[dateStr]) {
-      duesByDate[dateStr] = { dateString: dateStr, items: [] };
-    }
-    duesByDate[dateStr].items.push({
-      id: tx.id,
-      memberId: tx.memberId,
-      memberName: tx.member.name,
-      fundType: tx.fundType.name,
-      dueType: "FULL",
-      amountDue: tx.amount,
-    });
-  }
+  const [scheduleSnapshot, report] = await Promise.all([
+    getCollectionScheduleSnapshot(params.orgId),
+    getMemberReport(params.orgId),
+  ]);
 
-  // Count members in good standing
-  const totalMembers = await prisma.user.count({
-    where: { orgId, role: "STUDENT" },
+  const monthDays = enumerateMonthDays(year, month);
+  const rosters = await Promise.all(
+    monthDays.map((date) =>
+      getDailyCollectionRoster({
+        orgId: params.orgId,
+        date,
+      })
+    )
+  );
+
+  const duesByDate: Record<string, { dateString: string; items: Array<Record<string, unknown>> }> = {};
+  let installmentCount = 0;
+  let fullPaymentsCount = 0;
+  const scheduledMembers = new Set<string>();
+
+  rosters.forEach((rosterResult, index) => {
+    const date = monthDays[index];
+    const dateString = isoDate(date);
+
+    if (!dateString || rosterResult.roster.length === 0) {
+      return;
+    }
+
+    const items = rosterResult.roster.flatMap((row) => {
+      scheduledMembers.add(row.memberId);
+
+      return row.dueItems.map((item) => {
+        if (item.kind === "INSTALLMENT") installmentCount += 1;
+        if (item.kind === "FULL") fullPaymentsCount += 1;
+
+        return {
+          id: `${row.memberId}:${item.fundName}:${item.kind}:${item.installmentInfo ?? "full"}`,
+          memberId: row.memberId,
+          memberName: row.memberName,
+          sectionName: row.sectionName,
+          fundType: item.fundName,
+          dueType: item.kind,
+          installmentInfo: item.installmentInfo,
+          amountDue: item.amount,
+          paymentMode: row.paymentMode,
+          latestPaymentDate: row.latestPaymentDate,
+        };
+      });
+    });
+
+    duesByDate[dateString] = {
+      dateString,
+      items,
+    };
   });
 
-  const summary = {
-    installmentsCount: installmentEntries.length,
-    fullPaymentsCount: fullPayments.length,
-    fullyCurrentMembers: totalMembers,
-  };
+  const latestSectionProgress = rosters.find((entry) => entry.sections.length > 0)?.sections ?? [];
 
-  return NextResponse.json({ duesByDate, summary });
+  return NextResponse.json({
+    duesByDate,
+    summary: {
+      scheduledDaysCount: Object.keys(duesByDate).length,
+      installmentCount,
+      fullPaymentsCount,
+      membersScheduled: scheduledMembers.size,
+      fullyCurrentMembers: report.rows.filter((row) => row.balanceDue <= 0 && row.overallStatus !== "Overdue").length,
+    },
+    activePeriod: scheduleSnapshot.activePeriod
+      ? {
+          id: scheduleSnapshot.activePeriod.id,
+          name: scheduleSnapshot.activePeriod.name,
+          startDate: isoDate(scheduleSnapshot.activePeriod.startDate),
+          endDate: isoDate(scheduleSnapshot.activePeriod.endDate),
+          isActive: scheduleSnapshot.activePeriod.isActive,
+        }
+      : null,
+    schedules: scheduleSnapshot.schedules.map((schedule) => ({
+      id: schedule.id,
+      memberId: schedule.memberId,
+      memberName: schedule.member?.name ?? null,
+      scope: schedule.scope,
+      name: schedule.name,
+      weekdays: schedule.weekdays,
+      note: schedule.note,
+    })),
+    sectionProgress: latestSectionProgress,
+  });
 }

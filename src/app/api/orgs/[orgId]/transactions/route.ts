@@ -2,26 +2,29 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
 
 export async function GET(
   request: Request,
   { params }: { params: { orgId: string } }
 ) {
-  const session = await auth();
+  const authorization = await getAuthorizedOfficerSession(params.orgId);
 
-  if (!session?.user || session.user.role !== "OFFICER" || session.user.orgId !== params.orgId) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (!authorization.ok) {
+    return NextResponse.json({ message: authorization.message }, { status: authorization.status });
   }
 
   const transactions = await prisma.transaction.findMany({
-    where: { member: { orgId: params.orgId } },
+    where: {
+      member: { orgId: params.orgId },
+      deletedAt: null,
+    },
     include: {
       member: true,
       fundType: true,
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
   });
 
   const fundTypes = await prisma.fundType.findMany({
@@ -53,7 +56,8 @@ export async function GET(
       type: t.type,
       installmentInfo: t.installmentInfo || undefined,
       amount: t.amount,
-      date: t.createdAt.toISOString().split("T")[0],
+      date: (t.paidAt ?? t.createdAt).toISOString().split("T")[0],
+      dueDate: t.dueDate?.toISOString().split("T")[0] ?? undefined,
       note: t.note || undefined,
       status: t.status,
     };

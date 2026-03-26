@@ -1,30 +1,38 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { syncInstallmentStatuses } from "@/lib/member-report";
 
 export async function GET() {
-  await syncInstallmentStatuses();
+  const session = await auth();
+  const orgId = session?.user?.orgId;
+
+  if (!session?.user || session.user.role !== "OFFICER" || !orgId) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+
+  await syncInstallmentStatuses(orgId);
 
   const totalCollectedAgg = await prisma.transaction.aggregate({
-    where: { status: "PAID" },
+    where: { status: "PAID", deletedAt: null, member: { orgId } },
     _sum: { amount: true },
   });
 
   const activePlans = await prisma.installmentPlan.count({
-    where: { status: "ACTIVE" },
+    where: { status: "ACTIVE", deletedAt: null, member: { orgId } },
   });
 
   const overdueInstallments = await prisma.installmentEntry.count({
-    where: { status: "OVERDUE" },
+    where: { status: "OVERDUE", deletedAt: null, plan: { member: { orgId } } },
   });
 
   // Members with no overdue and no active installment
   const allStudents = await prisma.user.findMany({
-    where: { role: "STUDENT" },
+    where: { role: "STUDENT", orgId },
     include: {
-      transactions: { where: { status: "OVERDUE" } },
-      installmentPlans: { where: { status: "ACTIVE" } },
+      transactions: { where: { status: "OVERDUE", deletedAt: null } },
+      installmentPlans: { where: { status: "ACTIVE", deletedAt: null } },
     },
   });
   const fullyPaidMembers = allStudents.filter(

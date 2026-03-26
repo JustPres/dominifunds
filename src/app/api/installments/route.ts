@@ -3,7 +3,10 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import type { FundFrequency } from "@prisma/client";
-import { auth } from "@/lib/auth";
+import { createActivityLog } from "@/lib/activity-log";
+import { getActiveCollectionPeriod } from "@/lib/collection-scheduling";
+import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
+import { getSessionOfficerAccessRole } from "@/lib/officer-access";
 import prisma from "@/lib/prisma";
 import { syncInstallmentStatuses } from "@/lib/member-report";
 import { formatYearLevelLabel, resolveStudentYearLevel } from "@/lib/member-fields";
@@ -29,22 +32,33 @@ function formatPlanPeriod(period?: string | null, fallbackFrequency?: FundFreque
 }
 
 export async function GET(request: Request) {
-  const session = await auth();
   const { searchParams } = new URL(request.url);
   const orgId = searchParams.get("orgId");
 
-  if (!session?.user || session.user.role !== "OFFICER" || !orgId || session.user.orgId !== orgId) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (!orgId) {
+    return NextResponse.json({ message: "Organization is required." }, { status: 400 });
+  }
+
+  const authorization = await getAuthorizedOfficerSession(orgId);
+
+  if (!authorization.ok) {
+    return NextResponse.json({ message: authorization.message }, { status: authorization.status });
   }
 
   await syncInstallmentStatuses(orgId);
 
   const plans = await prisma.installmentPlan.findMany({
-    where: { member: { orgId } },
+    where: {
+      member: { orgId },
+      deletedAt: null,
+    },
     include: {
       member: true,
       fundType: true,
-      entries: { orderBy: { dueDate: "asc" } },
+      entries: {
+        where: { deletedAt: null },
+        orderBy: { dueDate: "asc" },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -83,6 +97,7 @@ export async function GET(request: Request) {
         installmentNo: index + 1,
         amountDue: entry.amountDue,
         dueDate: entry.dueDate.toISOString().split("T")[0],
+        paidAt: entry.paidAt?.toISOString().split("T")[0] ?? null,
         status: entry.status,
       })),
     };
@@ -95,21 +110,23 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
+  const body = await request.json();
+  const orgId = body.orgId ? String(body.orgId) : "";
+  const authorization = await getAuthorizedOfficerSession(orgId, { requireManager: true });
 
-  if (!session?.user || session.user.role !== "OFFICER" || !session.user.orgId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!authorization.ok) {
+    return NextResponse.json({ error: authorization.message }, { status: authorization.status });
   }
 
-  const body = await request.json();
+  const session = authorization.session;
   const {
-    orgId,
     memberId,
     fundTypeId,
     totalAmount,
     numberOfInstallments,
     period,
     dueDates,
+    note,
   } = body;
 
   if (orgId !== session.user.orgId) {
@@ -175,11 +192,13 @@ export async function POST(request: Request) {
   }
 
   const installmentAmounts = buildInstallmentAmounts(normalizedTotalAmount, normalizedInstallmentCount);
+  const activePeriod = await getActiveCollectionPeriod(orgId);
 
   const plan = await prisma.installmentPlan.create({
     data: {
       memberId,
       fundTypeId,
+      collectionPeriodId: activePeriod?.id ?? null,
       periodLabel: period?.trim() ? period.trim() : null,
       status: "ACTIVE",
       entries: {
@@ -205,6 +224,32 @@ export async function POST(request: Request) {
     .substring(0, 2)
     .toUpperCase();
 
+  await createActivityLog({
+    orgId,
+    actorUserId: session.user.id,
+    actorOfficerRole: getSessionOfficerAccessRole(session.user),
+    entityType: "INSTALLMENT_PLAN",
+    entityId: plan.id,
+    action: "CREATE",
+    note: String(note ?? "").trim() || "Installment plan created.",
+    afterSnapshot: {
+      id: plan.id,
+      memberId: plan.memberId,
+      memberName: plan.member.name,
+      fundTypeId: plan.fundTypeId,
+      fundTypeName: plan.fundType.name,
+      collectionPeriodId: plan.collectionPeriodId,
+      totalAmount: plan.entries.reduce((sum, entry) => sum + entry.amountDue, 0),
+      entries: plan.entries.map((entry, index) => ({
+        id: entry.id,
+        installmentNo: index + 1,
+        amountDue: entry.amountDue,
+        dueDate: entry.dueDate.toISOString(),
+        status: entry.status,
+      })),
+    },
+  });
+
   return NextResponse.json(
     {
       id: plan.id,
@@ -224,6 +269,7 @@ export async function POST(request: Request) {
         installmentNo: index + 1,
         amountDue: entry.amountDue,
         dueDate: entry.dueDate.toISOString().split("T")[0],
+        paidAt: entry.paidAt?.toISOString().split("T")[0] ?? null,
         status: entry.status,
       })),
     },

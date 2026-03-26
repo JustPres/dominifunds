@@ -2,13 +2,11 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { createActivityLog } from "@/lib/activity-log";
+import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
+import { getSessionOfficerAccessRole } from "@/lib/officer-access";
 import prisma from "@/lib/prisma";
 import { serializeFundType } from "@/lib/fund-type-utils";
-
-function isAuthorized(role?: string, sessionOrgId?: string | null, requestedOrgId?: string) {
-  return role === "OFFICER" && sessionOrgId === requestedOrgId;
-}
 
 async function findFundType(orgId: string, fundTypeId: string) {
   return prisma.fundType.findFirst({
@@ -31,10 +29,10 @@ export async function PATCH(
   request: Request,
   { params }: { params: { orgId: string; id: string } }
 ) {
-  const session = await auth();
+  const authorization = await getAuthorizedOfficerSession(params.orgId, { requireManager: true });
 
-  if (!isAuthorized(session?.user?.role, session?.user?.orgId, params.orgId)) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (!authorization.ok) {
+    return NextResponse.json({ message: authorization.message }, { status: authorization.status });
   }
 
   const existing = await findFundType(params.orgId, params.id);
@@ -96,6 +94,18 @@ export async function PATCH(
     },
   });
 
+  await createActivityLog({
+    orgId: params.orgId,
+    actorUserId: authorization.session.user.id,
+    actorOfficerRole: getSessionOfficerAccessRole(authorization.session.user),
+    entityType: "FUND_TYPE",
+    entityId: updated.id,
+    action: "UPDATE",
+    note: "Fund type updated.",
+    beforeSnapshot: existing,
+    afterSnapshot: serializeFundType(updated),
+  });
+
   return NextResponse.json(serializeFundType(updated));
 }
 
@@ -103,10 +113,10 @@ export async function DELETE(
   request: Request,
   { params }: { params: { orgId: string; id: string } }
 ) {
-  const session = await auth();
+  const authorization = await getAuthorizedOfficerSession(params.orgId, { requireManager: true });
 
-  if (!isAuthorized(session?.user?.role, session?.user?.orgId, params.orgId)) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (!authorization.ok) {
+    return NextResponse.json({ message: authorization.message }, { status: authorization.status });
   }
 
   const existing = await findFundType(params.orgId, params.id);
@@ -118,15 +128,38 @@ export async function DELETE(
   const hasUsage = existing._count.transactions > 0 || existing._count.installmentPlans > 0;
 
   if (hasUsage) {
-    await prisma.fundType.update({
+    const archived = await prisma.fundType.update({
       where: { id: params.id },
       data: {
         archivedAt: existing.archivedAt ?? new Date(),
       },
     });
 
+    await createActivityLog({
+      orgId: params.orgId,
+      actorUserId: authorization.session.user.id,
+      actorOfficerRole: getSessionOfficerAccessRole(authorization.session.user),
+      entityType: "FUND_TYPE",
+      entityId: archived.id,
+      action: "DELETE",
+      note: "Fund type archived after historical usage.",
+      beforeSnapshot: existing,
+      afterSnapshot: archived,
+    });
+
     return NextResponse.json({ success: true, action: "archived" });
   }
+
+  await createActivityLog({
+    orgId: params.orgId,
+    actorUserId: authorization.session.user.id,
+    actorOfficerRole: getSessionOfficerAccessRole(authorization.session.user),
+    entityType: "FUND_TYPE",
+    entityId: existing.id,
+    action: "DELETE",
+    note: "Unused fund type deleted.",
+    beforeSnapshot: existing,
+  });
 
   await prisma.fundType.delete({
     where: { id: params.id },

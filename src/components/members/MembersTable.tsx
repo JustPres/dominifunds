@@ -50,6 +50,7 @@ export default function MembersTable({ members }: { members: Member[] }) {
           <thead>
             <tr className="border-b border-[#F0ECEC] bg-[#F9F7F6]/50">
               <th className="py-4 pl-6 pr-4 font-semibold text-[#625f5f]">Member</th>
+              <th className="px-4 py-4 font-semibold text-[#625f5f]">Section</th>
               <th className="px-4 py-4 font-semibold text-[#625f5f]">Role</th>
               <th className="px-4 py-4 font-semibold text-[#625f5f]">Standing</th>
               <th className="px-4 py-4 font-semibold text-[#625f5f]">Recent Payment</th>
@@ -83,6 +84,12 @@ export default function MembersTable({ members }: { members: Member[] }) {
                         <p className="text-[11px] text-[#625f5f]/80">{member.yearLevel}</p>
                       </div>
                     </div>
+                  </td>
+
+                  <td className="px-4 py-4">
+                    <span className="inline-flex items-center rounded-md bg-[#F9F7F6] px-2.5 py-1 text-[11px] font-semibold text-[#625f5f]">
+                      {member.sectionName || "Unassigned"}
+                    </span>
                   </td>
 
                   <td className="px-4 py-4">
