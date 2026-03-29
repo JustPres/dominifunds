@@ -6,6 +6,7 @@ const fromEmail = process.env.RESEND_FROM_EMAIL;
 interface MailResult {
   delivered: boolean;
   debugCode?: string;
+  errorMessage?: string;
 }
 
 async function sendEmail(options: {
@@ -26,7 +27,7 @@ async function sendEmail(options: {
     return { delivered: false };
   }
 
-  await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: fromEmail,
     to: options.to,
     subject: options.subject,
@@ -34,7 +35,24 @@ async function sendEmail(options: {
     text: options.text,
   });
 
-  return { delivered: true };
+  if (error) {
+    console.error("[auth-mail] Resend send failed", {
+      to: options.to,
+      subject: options.subject,
+      name: error.name,
+      message: error.message,
+    });
+
+    return {
+      delivered: false,
+      errorMessage: error.message,
+    };
+  }
+
+  return {
+    delivered: true,
+    errorMessage: data?.id ? undefined : "Email provider did not return a message id.",
+  };
 }
 
 export async function sendLoginOtpEmail(email: string, code: string, role: "OFFICER" | "STUDENT") {

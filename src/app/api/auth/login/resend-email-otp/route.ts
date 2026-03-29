@@ -17,6 +17,14 @@ export async function POST(request: NextRequest) {
     const { challenge, otpCode } = await resendOtpChallenge(parsed.data.challengeId);
     const mailResult = await sendLoginOtpEmail(challenge.user.email, otpCode, challenge.user.role);
 
+    if (!mailResult.delivered && !mailResult.debugCode) {
+      console.error("[auth][login/resend-email-otp] Verification email failed", {
+        email: challenge.user.email,
+        error: mailResult.errorMessage ?? "Unknown email provider error",
+      });
+      return NextResponse.json({ message: "Unable to resend the verification email." }, { status: 500 });
+    }
+
     return NextResponse.json({
       resent: true,
       debugCode: !mailResult.delivered && mailResult.debugCode ? mailResult.debugCode : null,

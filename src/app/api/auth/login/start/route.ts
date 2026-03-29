@@ -56,6 +56,17 @@ export async function POST(request: NextRequest) {
           debugCode: mailResult.debugCode,
         });
       }
+
+      if (!mailResult.delivered) {
+        console.error("[auth][login/start] Verification email failed", {
+          email: result.user.email,
+          error: mailResult.errorMessage ?? "Unknown email provider error",
+        });
+        return NextResponse.json(
+          { message: "Unable to send verification email. Please contact support or try again later." },
+          { status: 500 }
+        );
+      }
     }
 
     return response;
