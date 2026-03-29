@@ -6,7 +6,8 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Seeding started...");
 
-  const passwordHash = await bcrypt.hash("password123", 10);
+  const officerPasswordHash = await bcrypt.hash("notmelook", 10);
+  const studentPasswordHash = await bcrypt.hash("password123", 10);
   const existingSection = await prisma.section.findFirst({
     where: { orgId: "BSIT", name: "BSIT 3A" },
   });
@@ -44,15 +45,16 @@ async function main() {
 
   // Add BSIT Officer
   await prisma.user.upsert({
-    where: { email: "officer.bsit@sdca.edu.ph" },
+    where: { email: "justine.lopez@sdca.edu.ph" },
     update: {
-      password: passwordHash,
+      name: "Justine Lopez",
+      password: officerPasswordHash,
       officerAccessRole: "TREASURER",
     },
     create: {
-      name: "BSIT Officer",
-      email: "officer.bsit@sdca.edu.ph",
-      password: passwordHash,
+      name: "Justine Lopez",
+      email: "justine.lopez@sdca.edu.ph",
+      password: officerPasswordHash,
       role: "OFFICER",
       orgId: "BSIT",
       orgRole: "Treasurer",
@@ -65,13 +67,13 @@ async function main() {
   await prisma.user.upsert({
     where: { email: "student.bsit@sdca.edu.ph" },
     update: {
-      password: passwordHash,
+      password: studentPasswordHash,
       sectionId: defaultSection.id,
     },
     create: {
       name: "Juan Dela Cruz",
       email: "student.bsit@sdca.edu.ph",
-      password: passwordHash,
+      password: studentPasswordHash,
       role: "STUDENT",
       orgId: "BSIT",
       orgRole: "Member",
@@ -125,8 +127,8 @@ async function main() {
   console.log("Seeding finished.");
   console.log("--- Demo Accounts Created ---");
   console.log("OFFICER:");
-  console.log("Email: officer.bsit@sdca.edu.ph");
-  console.log("Password: password123");
+  console.log("Email: justine.lopez@sdca.edu.ph");
+  console.log("Password: notmelook");
   console.log("\nSTUDENT:");
   console.log("Email: student.bsit@sdca.edu.ph");
   console.log("Password: password123");
