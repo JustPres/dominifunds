@@ -11,26 +11,15 @@ import {
   Eye,
   EyeOff,
   GraduationCap,
-  KeyRound,
   Loader2,
   LockKeyhole,
   Mail,
-  RefreshCw,
   ShieldCheck,
 } from "lucide-react";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 interface LoginFormValues {
   email: string;
   password: string;
-}
-
-interface VerificationState {
-  challengeId: string;
-  email: string;
-  maskedEmail: string;
-  role: "OFFICER" | "STUDENT";
-  debugCode?: string | null;
 }
 
 export default function LoginPage() {
@@ -39,10 +28,6 @@ export default function LoginPage() {
   const [loginRole, setLoginRole] = useState<"OFFICER" | "STUDENT">("OFFICER");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [otpValue, setOtpValue] = useState("");
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-  const [isResendingOtp, setIsResendingOtp] = useState(false);
-  const [verificationState, setVerificationState] = useState<VerificationState | null>(null);
   const [routeParams, setRouteParams] = useState({
     wantsSwitchAccount: false,
     callbackUrl: null as string | null,
@@ -73,7 +58,7 @@ export default function LoginPage() {
 
   const selectedRoleLabel = loginRole === "OFFICER" ? "Officer" : "Student";
   const isAuthenticated = status === "authenticated";
-  const showSwitchAccountState = isAuthenticated && routeParams.wantsSwitchAccount;
+  const showSwitchAccountState = status !== "loading" && isAuthenticated && routeParams.wantsSwitchAccount;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -83,6 +68,12 @@ export default function LoginPage() {
       callbackUrl: params.get("callbackUrl"),
     });
   }, []);
+
+  useEffect(() => {
+    if (status === "authenticated" && !routeParams.wantsSwitchAccount) {
+      router.replace(currentDestination);
+    }
+  }, [currentDestination, routeParams.wantsSwitchAccount, router, status]);
 
   const handleCredentialsSubmit = async (values: LoginFormValues) => {
     let hasError = false;
@@ -100,8 +91,6 @@ export default function LoginPage() {
     if (hasError) return;
 
     setIsSubmitting(true);
-    setVerificationState(null);
-    setOtpValue("");
 
     try {
       const res = await fetch("/api/auth/login/start", {
@@ -121,95 +110,12 @@ export default function LoginPage() {
         return;
       }
 
-      if (payload.mfaRequired) {
-        setVerificationState({
-          challengeId: payload.challengeId,
-          maskedEmail: payload.maskedEmail,
-          email: values.email,
-          role: payload.role,
-          debugCode: payload.debugCode,
-        });
-        toast.success("Verification code sent.");
-        return;
-      }
-
       await completeVerifiedSignIn(values.email, payload.role, payload.verificationToken);
     } catch (error) {
       console.error("[login][start]", error);
       toast.error("Unable to sign in.");
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleOtpSubmit = async () => {
-    if (!verificationState) return;
-
-    if (otpValue.length !== 6) {
-      toast.error("Enter the 6-digit verification code.");
-      return;
-    }
-
-    setIsVerifyingOtp(true);
-
-    try {
-      const res = await fetch("/api/auth/login/verify-email-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          challengeId: verificationState.challengeId,
-          code: otpValue,
-        }),
-      });
-
-      const payload = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        toast.error(payload.message || "Unable to verify the code.");
-        return;
-      }
-
-      await completeVerifiedSignIn(verificationState.email, payload.role, payload.verificationToken);
-    } catch (error) {
-      console.error("[login][verify-email-otp]", error);
-      toast.error("Unable to verify the code.");
-    } finally {
-      setIsVerifyingOtp(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (!verificationState) return;
-
-    setIsResendingOtp(true);
-
-    try {
-      const res = await fetch("/api/auth/login/resend-email-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ challengeId: verificationState.challengeId }),
-      });
-      const payload = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        toast.error(payload.message || "Unable to resend the code.");
-        return;
-      }
-
-      setVerificationState((current) =>
-        current
-          ? {
-              ...current,
-              debugCode: payload.debugCode ?? null,
-            }
-          : current
-      );
-      toast.success("A new verification code was sent.");
-    } catch (error) {
-      console.error("[login][resend-email-otp]", error);
-      toast.error("Unable to resend the code.");
-    } finally {
-      setIsResendingOtp(false);
     }
   };
 
@@ -236,40 +142,9 @@ export default function LoginPage() {
     }
 
     reset();
-    setVerificationState(null);
-    setOtpValue("");
     router.push(resolveDestination(role, routeParams.callbackUrl));
     router.refresh();
   };
-
-  if (status === "loading") {
-    return (
-      <main className="grid min-h-screen place-items-center bg-[linear-gradient(135deg,#f8f3ee_0%,#f3ebe4_48%,#f7f2ec_100%)]">
-        <div className="flex items-center gap-3 rounded-full border border-[#eadfd9] bg-white/85 px-5 py-3 text-sm font-medium text-[#5f4e4b] shadow-sm">
-          <Loader2 className="h-4 w-4 animate-spin text-[#8f1c20]" />
-          Preparing secure sign-in
-        </div>
-      </main>
-    );
-  }
-
-  if (isAuthenticated && !routeParams.wantsSwitchAccount) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-[linear-gradient(135deg,#f8f3ee_0%,#f3ebe4_48%,#f7f2ec_100%)] px-4">
-        <div className="w-full max-w-sm rounded-[28px] border border-white/70 bg-white/90 p-7 shadow-[0_24px_80px_rgba(46,25,26,0.14)]">
-          <div className="space-y-3 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#8f1c20]/10 text-[#8f1c20]">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-            <h1 className="text-2xl font-semibold text-[#241a1a]">Redirecting</h1>
-            <p className="text-sm leading-6 text-[#6f5d59]">
-              You are already signed in. We are taking you to your workspace.
-            </p>
-          </div>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(161,33,36,0.10),_transparent_24%),linear-gradient(135deg,#f8f3ee_0%,#f3ebe4_48%,#f7f2ec_100%)] text-[#201919]">
@@ -300,13 +175,13 @@ export default function LoginPage() {
 
                 <div className="max-w-md space-y-4">
                   <p className="text-xs uppercase tracking-[0.34em] text-white/70 sm:text-sm">
-                    Safer sign-in
+                    Fast and focused
                   </p>
                   <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">
                     Check dues, balances, and records with confidence.
                   </h1>
                   <p className="text-sm leading-7 text-white/82 sm:text-base">
-                    Password access stays familiar, with extra verification when the login needs a closer look.
+                    Use your school account to jump straight into your organization workspace.
                   </p>
                 </div>
               </div>
@@ -317,8 +192,8 @@ export default function LoginPage() {
                   <p className="mt-3 text-base font-semibold">Officer and student access stay separated.</p>
                 </div>
                 <div className="rounded-[24px] border border-white/15 bg-white/10 p-5 backdrop-blur-sm">
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-white/65">Verification</p>
-                  <p className="mt-3 text-base font-semibold">Email code checks appear when the login is sensitive.</p>
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-white/65">Quick access</p>
+                  <p className="mt-3 text-base font-semibold">Sign in faster with a direct password flow.</p>
                 </div>
               </div>
             </div>
@@ -329,16 +204,14 @@ export default function LoginPage() {
               <div className="space-y-3">
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#a12124]/10 bg-[#a12124]/5 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-[#8f1c20]">
                   <span className="h-2 w-2 rounded-full bg-[#c45a42]" />
-                  Secure Access
+                  Account Access
                 </div>
                 <div>
                   <h2 className="text-3xl font-semibold tracking-[-0.03em] text-[#241a1a]">
-                    {verificationState ? "Verify your sign-in" : showSwitchAccountState ? "Switch account" : "Welcome back"}
+                    {showSwitchAccountState ? "Switch account" : "Welcome back"}
                   </h2>
                   <p className="mt-2 text-sm leading-6 text-[#6f5d59]">
-                    {verificationState
-                      ? `Enter the code sent to ${verificationState.maskedEmail}.`
-                      : showSwitchAccountState
+                    {showSwitchAccountState
                       ? "You are already signed in. Continue or sign out to use another account."
                       : "Choose your role and continue with your school account."}
                   </p>
@@ -376,96 +249,6 @@ export default function LoginPage() {
                       Sign out
                     </button>
                   </div>
-                </div>
-              ) : verificationState ? (
-                <div className="space-y-5 rounded-[24px] border border-[#eadfd9] bg-[#fffaf7] p-5">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#8f1c20]/10 text-[#8f1c20]">
-                      <KeyRound className="h-5 w-5" />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="font-semibold text-[#2b1f1f]">Verification required</p>
-                      <p className="text-sm leading-6 text-[#6f5d59]">
-                        We sent a 6-digit code to {verificationState.maskedEmail}. This helps protect your account if someone else learns your password.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-[#38292a]">Email verification code</label>
-                    <InputOTP
-                      maxLength={6}
-                      value={otpValue}
-                      onChange={setOtpValue}
-                      containerClassName="w-full justify-between gap-2"
-                      className="w-full"
-                    >
-                      <InputOTPGroup className="grid w-full grid-cols-6 gap-2">
-                        {Array.from({ length: 6 }, (_, index) => (
-                          <InputOTPSlot
-                            key={index}
-                            index={index}
-                            className="h-14 rounded-2xl border border-[#e7dbd6] bg-white text-lg font-semibold text-[#211919]"
-                          />
-                        ))}
-                      </InputOTPGroup>
-                    </InputOTP>
-                    {verificationState.debugCode ? (
-                      <p className="text-xs text-[#8f1c20]">
-                        Dev code: <span className="font-semibold tracking-[0.2em]">{verificationState.debugCode}</span>
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={handleOtpSubmit}
-                      disabled={isVerifyingOtp}
-                      className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#8f1c20_0%,#b82d2d_68%,#d35f48_100%)] px-4 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(143,28,32,0.22)] transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {isVerifyingOtp ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Verifying
-                        </>
-                      ) : (
-                        <>
-                          Verify and continue
-                          <ArrowRight className="h-4 w-4" />
-                        </>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleResendOtp}
-                      disabled={isResendingOtp}
-                      className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-[#e7dbd6] bg-white px-4 text-sm font-semibold text-[#241a1a] transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {isResendingOtp ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Sending
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-4 w-4" />
-                          Resend code
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setVerificationState(null);
-                      setOtpValue("");
-                    }}
-                    className="text-sm font-medium text-[#8f1c20] transition-colors hover:text-[#5d3031]"
-                  >
-                    Back to login
-                  </button>
                 </div>
               ) : (
                 <>
@@ -583,11 +366,7 @@ export default function LoginPage() {
                 <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl bg-[#8f1c20]/8 text-[#8f1c20]">
                   <ShieldCheck className="h-4 w-4" />
                 </div>
-                <p>
-                  {verificationState
-                    ? "Verification codes are short-lived and are only used to finish the current sign-in."
-                    : "Accounts are provided by your organization administrator."}
-                </p>
+                <p>Accounts are provided by your organization administrator.</p>
               </div>
             </div>
           </section>

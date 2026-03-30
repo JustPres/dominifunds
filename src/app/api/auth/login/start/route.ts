@@ -3,8 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { type Role } from "@prisma/client";
 import { startLoginChallenge, AuthFlowError } from "@/lib/auth-login";
-import { sendLoginOtpEmail } from "@/lib/auth-mail";
-import { getDeviceContext, getTrustedDeviceToken, maskEmail, setTrustedDeviceCookie } from "@/lib/auth-security";
+import { getDeviceContext, getTrustedDeviceToken, setTrustedDeviceCookie } from "@/lib/auth-security";
 import { loginSchema } from "@/lib/validators/auth";
 
 export async function POST(request: NextRequest) {
@@ -28,45 +27,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const payload = result.otpRequired
-      ? {
-          mfaRequired: true,
-          challengeId: result.challenge.id,
-          maskedEmail: maskEmail(result.user.email),
-          role: result.user.role,
-          debugCode: null as string | null,
-        }
-      : {
-          mfaRequired: false,
-          verificationToken: result.verificationToken,
-          role: result.user.role,
-        };
+    const payload = {
+      mfaRequired: false,
+      verificationToken: result.verificationToken,
+      role: result.user.role,
+    };
     const response = NextResponse.json(payload);
 
-    if (!result.otpRequired && trustedDeviceToken) {
+    if (trustedDeviceToken) {
       setTrustedDeviceCookie(response, trustedDeviceToken);
-    }
-
-    if (result.otpRequired && result.otpCode) {
-      const mailResult = await sendLoginOtpEmail(result.user.email, result.otpCode, result.user.role);
-
-      if (!mailResult.delivered && mailResult.debugCode) {
-        return NextResponse.json({
-          ...payload,
-          debugCode: mailResult.debugCode,
-        });
-      }
-
-      if (!mailResult.delivered) {
-        console.error("[auth][login/start] Verification email failed", {
-          email: result.user.email,
-          error: mailResult.errorMessage ?? "Unknown email provider error",
-        });
-        return NextResponse.json(
-          { message: "Unable to send verification email. Please contact support or try again later." },
-          { status: 500 }
-        );
-      }
     }
 
     return response;

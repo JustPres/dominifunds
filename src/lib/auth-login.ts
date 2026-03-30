@@ -86,7 +86,7 @@ export async function startLoginChallenge(input: {
 
   const trustedDevice = await getTrustedDevice(user.id, input.context.trustedDeviceToken);
   const suspiciousReason = await getSuspiciousReason(user, input.context, trustedDevice);
-  const otpRequired = user.role === "OFFICER" || suspiciousReason !== null;
+  const otpRequired = false;
   const baseChallengeData = {
     userId: user.id,
     email: user.email,
@@ -103,74 +103,40 @@ export async function startLoginChallenge(input: {
     passwordVerifiedAt: new Date(),
   };
 
-  if (!otpRequired) {
-    const verificationToken = generateOpaqueToken();
-    const challenge = await prisma.loginVerificationChallenge.create({
-      data: {
-        ...baseChallengeData,
-        otpRequired: false,
-        status: LoginChallengeStatus.VERIFIED,
-        verifiedAt: new Date(),
-        verificationTokenHash: hashValue(verificationToken),
-        verificationTokenExpiresAt: new Date(Date.now() + LOGIN_LIMITS.verificationTokenExpiresMs),
-      },
-    });
-
-    if (trustedDevice) {
-      await prisma.trustedDevice.update({
-        where: { id: trustedDevice.id },
-        data: {
-          lastSeenAt: new Date(),
-          ipAddress: input.context.ipAddress,
-          userAgent: input.context.userAgent,
-          platform: input.context.platform,
-          language: input.context.language,
-          label: input.context.deviceLabel,
-          fingerprintHash: input.context.fingerprintHash,
-          expiresAt: new Date(Date.now() + LOGIN_LIMITS.trustedDeviceTtlMs),
-        },
-      });
-    }
-
-    return {
-      user,
-      otpRequired: false,
-      suspiciousReason,
-      challenge,
-      verificationToken,
-      trustedDevice,
-    } satisfies StartLoginResult;
-  }
-
-  const otpCode = generateOtpCode();
+  const verificationToken = generateOpaqueToken();
   const challenge = await prisma.loginVerificationChallenge.create({
     data: {
       ...baseChallengeData,
-      status: LoginChallengeStatus.PENDING,
-      codeHash: hashValue(otpCode),
-      codeExpiresAt: new Date(Date.now() + LOGIN_LIMITS.otpExpiresMs),
+      otpRequired: false,
+      status: LoginChallengeStatus.VERIFIED,
+      verifiedAt: new Date(),
+      verificationTokenHash: hashValue(verificationToken),
+      verificationTokenExpiresAt: new Date(Date.now() + LOGIN_LIMITS.verificationTokenExpiresMs),
     },
   });
 
-  await recordLoginEvent({
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-    status: LoginEventStatus.OTP_SENT,
-    mfaRequired: true,
-    ipAddress: input.context.ipAddress,
-    userAgent: input.context.userAgent,
-    platform: input.context.platform,
-    deviceLabel: input.context.deviceLabel,
-    detail: suspiciousReason ?? "Verification required.",
-  });
+  if (trustedDevice) {
+    await prisma.trustedDevice.update({
+      where: { id: trustedDevice.id },
+      data: {
+        lastSeenAt: new Date(),
+        ipAddress: input.context.ipAddress,
+        userAgent: input.context.userAgent,
+        platform: input.context.platform,
+        language: input.context.language,
+        label: input.context.deviceLabel,
+        fingerprintHash: input.context.fingerprintHash,
+        expiresAt: new Date(Date.now() + LOGIN_LIMITS.trustedDeviceTtlMs),
+      },
+    });
+  }
 
   return {
     user,
-    otpRequired: true,
+    otpRequired: false,
     suspiciousReason,
     challenge,
-    otpCode,
+    verificationToken,
     trustedDevice,
   } satisfies StartLoginResult;
 }
@@ -380,28 +346,12 @@ async function getTrustedDevice(userId: string, trustedDeviceToken: string | nul
 }
 
 async function getSuspiciousReason(user: User, context: LoginRequestContext, trustedDevice: TrustedDevice | null) {
-  if (user.role === "OFFICER") {
-    return trustedDevice ? "Officer login still requires verification." : "New officer device requires verification.";
-  }
-
   if (!trustedDevice) {
-    return "New student device requires verification.";
+    return null;
   }
 
   if (trustedDevice.fingerprintHash && trustedDevice.fingerprintHash !== context.fingerprintHash) {
-    return "Student device fingerprint changed.";
-  }
-
-  const recentFailedOtps = await prisma.loginEvent.count({
-    where: {
-      userId: user.id,
-      status: LoginEventStatus.OTP_FAILED,
-      createdAt: { gte: new Date(Date.now() - LOGIN_LIMITS.suspiciousWindowMs) },
-    },
-  });
-
-  if (recentFailedOtps >= LOGIN_LIMITS.suspiciousFailureThreshold) {
-    return "Recent verification failures require a fresh check.";
+    return "Device fingerprint changed.";
   }
 
   return null;
