@@ -52,7 +52,7 @@ export async function GET(
 
   // Collection rate: paid vs total expected
   const allFunds = await prisma.fundType.findMany({ where: { orgId } });
-  const totalMembers = await prisma.user.count({ where: { orgId, role: "STUDENT" } });
+  const totalMembers = await prisma.user.count({ where: { orgId, role: "STUDENT", deactivatedAt: null } });
   const totalExpected = allFunds.reduce((sum, f) => sum + f.amount, 0) * totalMembers;
   const collectionRatePercent = totalExpected > 0
     ? Math.round((totalCollected / totalExpected) * 100)
@@ -60,7 +60,7 @@ export async function GET(
 
   // Standings
   const allStudents = await prisma.user.findMany({
-    where: { orgId, role: "STUDENT" },
+    where: { orgId, role: "STUDENT", deactivatedAt: null },
     include: {
       transactions: { where: { status: "OVERDUE" } },
       installmentPlans: { where: { status: "ACTIVE" } },
@@ -140,8 +140,8 @@ export async function GET(
     role: o.orgRole || "Officer",
     officerName: o.name,
     termStart: o.createdAt.toISOString().split("T")[0],
-    termEnd: "",
-    status: "ACTIVE",
+    termEnd: o.deactivatedAt?.toISOString().split("T")[0] ?? "",
+    status: o.deactivatedAt ? "INACTIVE" : "ACTIVE",
   }));
 
   return NextResponse.json({

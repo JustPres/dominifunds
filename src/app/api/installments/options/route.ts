@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       orderBy: { name: "asc" },
     }),
     prisma.user.findMany({
-      where: { orgId, role: "STUDENT" },
+      where: { orgId, role: "STUDENT", deactivatedAt: null },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),

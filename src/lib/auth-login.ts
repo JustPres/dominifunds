@@ -53,7 +53,7 @@ export async function startLoginChallenge(input: {
     where: { email: input.email },
   });
 
-  if (!user || user.role !== input.role) {
+  if (!user || user.role !== input.role || user.deactivatedAt) {
     await recordLoginEvent({
       email: input.email,
       role: input.role,
@@ -268,6 +268,10 @@ export async function consumeVerifiedLoginToken(email: string, role: Role, verif
 
   if (!challenge || !challenge.user) {
     throw new Error("Verification expired.");
+  }
+
+  if (challenge.user.deactivatedAt) {
+    throw new Error("Account is inactive.");
   }
 
   await prisma.$transaction([

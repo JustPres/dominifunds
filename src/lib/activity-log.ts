@@ -5,6 +5,7 @@ import type {
   Prisma,
 } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { inferOfficerAccessRole } from "@/lib/officer-access";
 
 interface ActivityLogInput {
   orgId: string;
@@ -19,11 +20,28 @@ interface ActivityLogInput {
 }
 
 export async function createActivityLog(input: ActivityLogInput) {
+  const actor =
+    input.actorUserId
+      ? await prisma.user.findUnique({
+          where: { id: input.actorUserId },
+          select: {
+            name: true,
+            email: true,
+            officerAccessRole: true,
+            orgRole: true,
+          },
+        })
+      : null;
+
   return prisma.activityLog.create({
     data: {
       orgId: input.orgId,
       actorUserId: input.actorUserId ?? null,
       actorOfficerRole: input.actorOfficerRole ?? null,
+      actorNameSnapshot: actor?.name ?? null,
+      actorEmailSnapshot: actor?.email ?? null,
+      actorOfficerRoleSnapshot:
+        input.actorOfficerRole ?? inferOfficerAccessRole(actor?.officerAccessRole, actor?.orgRole) ?? null,
       entityType: input.entityType,
       entityId: input.entityId,
       action: input.action,

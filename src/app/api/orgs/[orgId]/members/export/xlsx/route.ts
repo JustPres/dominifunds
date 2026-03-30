@@ -8,6 +8,7 @@ import {
   getMemberReportColumnValue,
   MEMBER_REPORT_EXPORT_COLUMNS,
   parseMemberReportFilterStatus,
+  parseMemberReportView,
 } from "@/lib/member-report";
 
 function toBodyBytes(value: ArrayBuffer | Uint8Array) {
@@ -29,6 +30,7 @@ export async function GET(
     search: searchParams.get("search") || undefined,
     status: parseMemberReportFilterStatus(searchParams.get("status")),
     sectionId: searchParams.get("sectionId") || undefined,
+    view: parseMemberReportView(searchParams.get("view")),
   });
 
   const workbook = new Workbook();
@@ -49,6 +51,7 @@ export async function GET(
   sheet.getCell("C2").value = `Generated: ${new Date(report.generatedAt).toLocaleString("en-PH")}`;
   sheet.getCell("E2").value = `Status: ${report.filters.status}`;
   sheet.getCell("F2").value = `Search: ${report.filters.search || "None"}`;
+  sheet.getCell("G2").value = `View: ${report.filters.view}`;
 
   const headerRow = sheet.getRow(4);
   MEMBER_REPORT_EXPORT_COLUMNS.forEach((column, index) => {

@@ -29,7 +29,7 @@ export async function GET() {
 
   // Members with no overdue and no active installment
   const allStudents = await prisma.user.findMany({
-    where: { role: "STUDENT", orgId },
+    where: { role: "STUDENT", orgId, deactivatedAt: null },
     include: {
       transactions: { where: { status: "OVERDUE", deletedAt: null } },
       installmentPlans: { where: { status: "ACTIVE", deletedAt: null } },

@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   const [member, fundType] = await Promise.all([
     prisma.user.findUnique({
       where: { id: memberId },
-      select: { id: true, name: true, orgId: true },
+      select: { id: true, name: true, orgId: true, deactivatedAt: true },
     }),
     prisma.fundType.findUnique({
       where: { id: fundTypeId },
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     }),
   ]);
 
-  if (!member || member.orgId !== session.user.orgId) {
+  if (!member || member.orgId !== session.user.orgId || member.deactivatedAt) {
     return NextResponse.json({ error: "Member not found in this organization" }, { status: 400 });
   }
 

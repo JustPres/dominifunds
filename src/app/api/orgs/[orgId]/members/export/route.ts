@@ -7,6 +7,7 @@ import {
   getMemberReportColumnValue,
   MEMBER_REPORT_EXPORT_COLUMNS,
   parseMemberReportFilterStatus,
+  parseMemberReportView,
 } from "@/lib/member-report";
 
 function escapeCsv(value: string | number) {
@@ -32,6 +33,7 @@ export async function GET(
     search: searchParams.get("search") || undefined,
     status: parseMemberReportFilterStatus(searchParams.get("status")),
     sectionId: searchParams.get("sectionId") || undefined,
+    view: parseMemberReportView(searchParams.get("view")),
   });
 
   const csv = [

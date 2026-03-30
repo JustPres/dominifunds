@@ -7,7 +7,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { createActivityLog } from "@/lib/activity-log";
 import { formatYearLevelLabel, resolveStudentOrgRole } from "@/lib/member-fields";
-import { getMemberReport, parseMemberReportFilterStatus } from "@/lib/member-report";
+import { getMemberReport, parseMemberReportFilterStatus, parseMemberReportView } from "@/lib/member-report";
 import { getSessionOfficerAccessRole } from "@/lib/officer-access";
 
 export async function GET(request: Request) {
@@ -17,6 +17,7 @@ export async function GET(request: Request) {
   const search = searchParams.get("search") || undefined;
   const status = parseMemberReportFilterStatus(searchParams.get("status"));
   const sectionId = searchParams.get("sectionId") || undefined;
+  const view = parseMemberReportView(searchParams.get("view")) ?? "active";
 
   if (!session?.user || session.user.role !== "OFFICER" || !orgId || session.user.orgId !== orgId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -26,6 +27,7 @@ export async function GET(request: Request) {
     search,
     status,
     sectionId,
+    view,
   });
 
   return NextResponse.json(
@@ -37,6 +39,8 @@ export async function GET(request: Request) {
       yearLevel: row.yearLevel,
       sectionId: row.sectionId,
       sectionName: row.sectionName,
+      deactivatedAt: row.deactivatedAt,
+      isArchived: row.isArchived,
       totalPaid: row.totalPaid,
       activeInstallmentPlans: row.activeInstallmentPlans,
       balanceDue: row.balanceDue,
@@ -77,6 +81,25 @@ export async function POST(request: Request) {
   }
 
   const normalizedSectionId = sectionId ? String(sectionId) : null;
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+    select: {
+      id: true,
+      orgId: true,
+      role: true,
+      deactivatedAt: true,
+    },
+  });
+
+  if (existingUser) {
+    const message =
+      existingUser.orgId === orgId && existingUser.role === "STUDENT" && existingUser.deactivatedAt
+        ? "A matching archived member already exists. Restore that record instead of creating a new one."
+        : "An account with that email already exists.";
+
+    return NextResponse.json({ error: message }, { status: 409 });
+  }
 
   if (normalizedSectionId) {
     const section = await prisma.section.findFirst({
@@ -138,6 +161,8 @@ export async function POST(request: Request) {
     yearLevel: formatYearLevelLabel(user.yearLevel),
     sectionId: user.sectionId,
     sectionName: user.section?.name ?? "Unassigned",
+    deactivatedAt: user.deactivatedAt?.toISOString() ?? null,
+    isArchived: Boolean(user.deactivatedAt),
     totalPaid: 0,
     activeInstallmentPlans: 0,
     balanceDue: 0,

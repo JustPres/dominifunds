@@ -4,6 +4,7 @@ import {
   resolveStudentOrgRole,
   resolveStudentYearLevel,
 } from "@/lib/member-fields";
+import { type UserDirectoryView, getUserLifecycleWhere } from "@/lib/user-lifecycle";
 
 export type MemberDirectoryStatus = "Good Standing" | "Has Installment Plan" | "Overdue";
 export type MemberOverallStatus = "Fully Paid" | "On Installment" | "Overdue" | "No Payment Record";
@@ -20,6 +21,7 @@ export interface MemberReportFilters {
   search?: string;
   status?: MemberReportFilterStatus | null;
   sectionId?: string | null;
+  view?: UserDirectoryView;
 }
 
 export interface MemberReportRow {
@@ -30,6 +32,8 @@ export interface MemberReportRow {
   yearLevel: string;
   sectionId: string | null;
   sectionName: string;
+  deactivatedAt: string | null;
+  isArchived: boolean;
   totalPaid: number;
   activeInstallmentPlans: number;
   balanceDue: number;
@@ -55,6 +59,7 @@ export interface MemberReportData {
     search: string;
     status: MemberReportFilterStatus;
     sectionId: string;
+    view: UserDirectoryView;
   };
   rows: MemberReportRow[];
 }
@@ -100,6 +105,15 @@ export function parseMemberReportFilterStatus(
     : undefined;
 }
 
+export function parseMemberReportView(value?: string | null): UserDirectoryView | undefined {
+  if (!value) return undefined;
+
+  if (value === "archived") return "archived";
+  if (value === "active") return "active";
+
+  return undefined;
+}
+
 export const MEMBER_REPORT_EXPORT_COLUMNS: MemberReportColumn[] = [
   { key: "name", header: "Student Name", width: 24 },
   { key: "email", header: "Email", width: 28 },
@@ -139,6 +153,7 @@ function normalizeFilters(filters: MemberReportFilters = {}) {
     search: filters.search?.trim() ?? "",
     status: filters.status && filters.status !== "All" ? filters.status : "All",
     sectionId: filters.sectionId?.trim() ?? "",
+    view: filters.view === "archived" ? "archived" : "active",
   } as const;
 }
 
@@ -307,6 +322,7 @@ export async function getMemberReport(
   const members = await prisma.user.findMany({
     where: {
       role: "STUDENT",
+      ...getUserLifecycleWhere(normalizedFilters.view),
       ...(orgId ? { orgId } : {}),
       ...(normalizedFilters.sectionId ? { sectionId: normalizedFilters.sectionId } : {}),
     },
@@ -409,6 +425,8 @@ export async function getMemberReport(
         yearLevel: formatYearLevelLabel(normalizedYearLevel),
         sectionId: member.sectionId ?? null,
         sectionName: member.section?.name ?? "Unassigned",
+        deactivatedAt: member.deactivatedAt?.toISOString() ?? null,
+        isArchived: Boolean(member.deactivatedAt),
         totalPaid,
         activeInstallmentPlans: activePlans.length,
         balanceDue,

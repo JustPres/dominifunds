@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 
 import { renderToBuffer } from "@react-pdf/renderer";
 import { auth } from "@/lib/auth";
-import { getMemberReport, parseMemberReportFilterStatus } from "@/lib/member-report";
+import { getMemberReport, parseMemberReportFilterStatus, parseMemberReportView } from "@/lib/member-report";
 import { MemberReportPdfDocument } from "@/lib/member-report-pdf";
 
 function toBodyBytes(value: ArrayBuffer | Uint8Array) {
@@ -25,6 +25,7 @@ export async function GET(
     search: searchParams.get("search") || undefined,
     status: parseMemberReportFilterStatus(searchParams.get("status")),
     sectionId: searchParams.get("sectionId") || undefined,
+    view: parseMemberReportView(searchParams.get("view")),
   });
 
   const buffer = await renderToBuffer(

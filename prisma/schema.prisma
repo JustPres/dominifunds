@@ -32,6 +32,8 @@ model User {
   officerAccessRole OfficerAccessRole?
   sectionId  String?  @db.ObjectId
   lastLoginAt DateTime?
+  deactivatedAt DateTime?
+  deactivationReason String?
 
   section          Section? @relation(fields: [sectionId], references: [id])
   transactions     Transaction[]
@@ -152,6 +154,7 @@ model Section {
   deletedAt DateTime?
 
   members   User[]
+  importDrafts MemberImportDraft[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -221,6 +224,8 @@ enum ActivityEntityType {
   COLLECTION_PERIOD
   COLLECTION_SCHEDULE
   MEMBER
+  USER_ACCOUNT
+  MEMBER_IMPORT_DRAFT
 }
 
 enum ActivityAction {
@@ -306,6 +311,9 @@ model ActivityLog {
   orgId              String
   actorUserId        String?           @db.ObjectId
   actorOfficerRole   OfficerAccessRole?
+  actorNameSnapshot  String?
+  actorEmailSnapshot String?
+  actorOfficerRoleSnapshot OfficerAccessRole?
   entityType         ActivityEntityType
   entityId           String
   action             ActivityAction
@@ -316,4 +324,30 @@ model ActivityLog {
   actor              User?             @relation("ActivityActor", fields: [actorUserId], references: [id])
 
   createdAt          DateTime          @default(now())
+}
+
+enum MemberImportDraftStatus {
+  INCOMPLETE
+  READY
+  ERROR
+}
+
+model MemberImportDraft {
+  id             String                  @id @default(auto()) @map("_id") @db.ObjectId
+  orgId          String
+  name           String
+  email          String?
+  orgRole        String?
+  yearLevel      String?
+  sectionId      String?                 @db.ObjectId
+  sourceFileName String?
+  status         MemberImportDraftStatus @default(INCOMPLETE)
+  issueSummary   String?
+  rawData        Json?
+  createdByUserId String?                @db.ObjectId
+
+  section        Section?                @relation(fields: [sectionId], references: [id])
+
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
 }

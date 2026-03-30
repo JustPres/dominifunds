@@ -12,7 +12,7 @@ export async function GET() {
   }
 
   const memberCount = await prisma.user.count({
-    where: { orgId, role: "STUDENT" },
+    where: { orgId, role: "STUDENT", deactivatedAt: null },
   });
 
   const allFunds = await prisma.fundType.findMany({ where: { orgId, archivedAt: null } });

@@ -141,6 +141,7 @@ export async function getDailyCollectionRoster(filters: DailyRosterFilters) {
       where: {
         orgId: filters.orgId,
         role: "STUDENT",
+        deactivatedAt: null,
         ...(filters.sectionId ? { sectionId: filters.sectionId } : {}),
       },
       include: {

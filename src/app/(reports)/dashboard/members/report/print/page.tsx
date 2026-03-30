@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { getMemberReport, parseMemberReportFilterStatus } from "@/lib/member-report";
+import { getMemberReport, parseMemberReportFilterStatus, parseMemberReportView } from "@/lib/member-report";
 import MemberReportPrintSheet from "@/components/members/MemberReportPrintSheet";
 import AutoPrint from "./auto-print";
 
@@ -13,6 +13,7 @@ export default async function MembersReportPrintPage({
     search?: string;
     status?: string;
     sectionId?: string;
+    view?: string;
     autoprint?: string;
   };
 }) {
@@ -30,6 +31,7 @@ export default async function MembersReportPrintPage({
     search: searchParams.search,
     status: parseMemberReportFilterStatus(searchParams.status),
     sectionId: searchParams.sectionId,
+    view: parseMemberReportView(searchParams.view),
   });
 
   return (
