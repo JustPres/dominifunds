@@ -32,6 +32,7 @@ model User {
   officerAccessRole OfficerAccessRole?
   sectionId  String?  @db.ObjectId
   lastLoginAt DateTime?
+  mustChangePassword Boolean @default(false)
   deactivatedAt DateTime?
   deactivationReason String?
 

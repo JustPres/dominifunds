@@ -6,7 +6,7 @@ export const authConfig = {
   },
   providers: [], // The real providers are added in auth.ts securely on the server
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id as string;
         token.name = user.name;
@@ -18,6 +18,11 @@ export const authConfig = {
         token.officerAccessRole = user.officerAccessRole;
         token.sectionId = user.sectionId;
         token.lastLoginAt = user.lastLoginAt;
+        token.mustChangePassword = user.mustChangePassword;
+      }
+
+      if (trigger === "update" && session?.mustChangePassword !== undefined) {
+        token.mustChangePassword = Boolean(session.mustChangePassword);
       }
       return token;
     },
@@ -32,6 +37,7 @@ export const authConfig = {
       session.user.officerAccessRole = token.officerAccessRole as "TREASURER" | "PRESIDENT" | null;
       session.user.sectionId = token.sectionId as string | null;
       session.user.lastLoginAt = token.lastLoginAt as string | null;
+      session.user.mustChangePassword = Boolean(token.mustChangePassword);
       return session;
     },
   },

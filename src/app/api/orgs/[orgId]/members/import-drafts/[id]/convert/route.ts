@@ -83,6 +83,7 @@ export async function POST(
         orgRole: draft.orgRole ?? "Member",
         yearLevel: draft.yearLevel ?? null,
         sectionId: draft.sectionId,
+        mustChangePassword: true,
       },
       include: {
         section: true,

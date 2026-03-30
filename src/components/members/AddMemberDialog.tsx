@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -41,6 +41,7 @@ const memberSchema = z.object({
   yearLevel: z.enum(YEAR_LEVEL_OPTIONS),
   role: z.enum(MEMBER_ROLE_OPTIONS),
   sectionId: z.string().optional(),
+  temporaryPassword: z.string().optional(),
 });
 
 type MemberFormValues = z.infer<typeof memberSchema>;
@@ -65,6 +66,7 @@ function getDefaultValues(member?: Member | null): MemberFormValues {
     yearLevel: normalizeYearLevel(member?.yearLevel) ?? "1st",
     role: normalizedRole,
     sectionId: member?.sectionId ?? "",
+    temporaryPassword: "",
   };
 }
 
@@ -81,6 +83,19 @@ export default function AddMemberDialog({
   const { data: session } = useSession();
   const orgId = session?.user?.orgId;
   const isEditing = Boolean(member);
+  const schema = useMemo(
+    () =>
+      memberSchema.superRefine((value, context) => {
+        if (!isEditing && (!value.temporaryPassword || value.temporaryPassword.length < 8)) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["temporaryPassword"],
+            message: "Temporary password must be at least 8 characters.",
+          });
+        }
+      }),
+    [isEditing]
+  );
 
   const {
     register,
@@ -88,7 +103,7 @@ export default function AddMemberDialog({
     reset,
     formState: { errors },
   } = useForm<MemberFormValues>({
-    resolver: zodResolver(memberSchema),
+    resolver: zodResolver(schema),
     defaultValues: getDefaultValues(member),
   });
 
@@ -111,6 +126,7 @@ export default function AddMemberDialog({
         role: data.role,
         sectionId: data.sectionId || undefined,
         orgId,
+        temporaryPassword: isEditing ? undefined : data.temporaryPassword,
       };
 
       return isEditing && member
@@ -184,6 +200,25 @@ export default function AddMemberDialog({
             />
             {errors.email ? <span className="text-[11px] font-bold text-red-500">{errors.email.message}</span> : null}
           </div>
+
+          {!isEditing ? (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-[#343434]">Temporary Password</label>
+              <input
+                {...register("temporaryPassword")}
+                type="password"
+                autoComplete="new-password"
+                placeholder="Set a temporary password"
+                className={inputClass}
+              />
+              {errors.temporaryPassword ? (
+                <span className="text-[11px] font-bold text-red-500">{errors.temporaryPassword.message}</span>
+              ) : null}
+              <p className="text-[11px] text-[#625f5f]">
+                The student uses this once, then must create a new password on first sign-in.
+              </p>
+            </div>
+          ) : null}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">

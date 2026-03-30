@@ -11,6 +11,7 @@ declare module "next-auth" {
       officerAccessRole: "TREASURER" | "PRESIDENT" | null;
       sectionId: string | null;
       lastLoginAt: string | null;
+      mustChangePassword: boolean;
     } & DefaultSession["user"];
   }
 
@@ -22,6 +23,7 @@ declare module "next-auth" {
     officerAccessRole: "TREASURER" | "PRESIDENT" | null;
     sectionId: string | null;
     lastLoginAt: string | null;
+    mustChangePassword: boolean;
   }
 }
 
@@ -35,5 +37,6 @@ declare module "next-auth/jwt" {
     officerAccessRole: "TREASURER" | "PRESIDENT" | null;
     sectionId: string | null;
     lastLoginAt: string | null;
+    mustChangePassword: boolean;
   }
 }

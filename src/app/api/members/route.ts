@@ -74,10 +74,28 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { name, email, role, yearLevel, orgId, sectionId, note } = body;
+  const name = String(body.name ?? "").trim();
+  const email = String(body.email ?? "").trim().toLowerCase();
+  const role = String(body.role ?? "Member").trim() || "Member";
+  const yearLevel = body.yearLevel ? String(body.yearLevel).trim() : null;
+  const orgId = String(body.orgId ?? "").trim();
+  const sectionId = body.sectionId;
+  const note = body.note;
+  const temporaryPassword = typeof body.temporaryPassword === "string" ? body.temporaryPassword : "";
 
   if (!orgId || orgId !== session.user.orgId) {
     return NextResponse.json({ error: "Invalid organization context." }, { status: 400 });
+  }
+
+  if (!name || !email) {
+    return NextResponse.json({ error: "Name and school email are required." }, { status: 400 });
+  }
+
+  if (temporaryPassword.length < 8) {
+    return NextResponse.json(
+      { error: "Temporary password must be at least 8 characters." },
+      { status: 400 }
+    );
   }
 
   const normalizedSectionId = sectionId ? String(sectionId) : null;
@@ -116,7 +134,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const hashedPassword = await bcrypt.hash("password123", 10);
+  const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
   const user = await prisma.user.create({
     data: {
@@ -128,6 +146,7 @@ export async function POST(request: Request) {
       orgRole: role || "Member",
       yearLevel: yearLevel || null,
       sectionId: normalizedSectionId,
+      mustChangePassword: true,
     },
     include: {
       section: true,

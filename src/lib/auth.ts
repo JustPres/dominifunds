@@ -42,6 +42,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           officerAccessRole: inferOfficerAccessRole(user.officerAccessRole, user.orgRole),
           sectionId: user.sectionId,
           lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
+          mustChangePassword: Boolean(user.mustChangePassword),
         };
       },
     }),

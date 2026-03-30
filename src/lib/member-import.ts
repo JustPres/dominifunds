@@ -459,6 +459,7 @@ export async function commitMemberImport(
           orgRole: row.normalizedRole,
           yearLevel: row.normalizedYearLevel,
           sectionId: row.sectionId,
+          mustChangePassword: true,
         },
       });
 

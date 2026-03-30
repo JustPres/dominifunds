@@ -36,6 +36,7 @@ export interface Member {
 export interface AddMemberInput extends Pick<Member, "name" | "email" | "role" | "yearLevel"> {
   orgId?: string;
   sectionId?: string | null;
+  temporaryPassword?: string;
   note?: string;
 }
 
@@ -202,7 +203,10 @@ export async function addMember(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(memberData)
   });
-  if (!res.ok) throw new Error("Failed to add member");
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to add member");
+  }
   return res.json();
 }
 

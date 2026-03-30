@@ -7,11 +7,13 @@ export default NextAuth(authConfig).auth((req) => {
   const wantsAccountSwitch = req.nextUrl.searchParams.get("switch") === "1";
   const isLoggedIn = !!req.auth;
   const role = req.auth?.user?.role as string | undefined;
+  const mustChangePassword = Boolean(req.auth?.user?.mustChangePassword);
 
   const isAuthRoute =
     pathname.startsWith("/login") ||
     pathname.startsWith("/register") ||
     pathname.startsWith("/forgot-password");
+  const isPasswordChangeRoute = pathname.startsWith("/account/change-password");
 
   const isProtectedDashboardRoute =
     pathname.startsWith("/dashboard") ||
@@ -31,6 +33,18 @@ export default NextAuth(authConfig).auth((req) => {
 
   // Handle Authenticated Users
   if (isLoggedIn) {
+    if (mustChangePassword && !isPasswordChangeRoute) {
+      return NextResponse.redirect(new URL("/account/change-password", req.nextUrl.origin));
+    }
+
+    if (!mustChangePassword && isPasswordChangeRoute) {
+      if (role === "STUDENT") {
+        return NextResponse.redirect(new URL("/portal", req.nextUrl.origin));
+      }
+
+      return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
+    }
+
     if (pathname === "/") {
       if (role === "STUDENT") {
         return NextResponse.redirect(new URL("/portal", req.nextUrl.origin));
