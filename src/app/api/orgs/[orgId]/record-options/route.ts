@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
 import prisma from "@/lib/prisma";
+import { getActiveUserWhere } from "@/lib/user-lifecycle";
 
 export async function GET(
   request: Request,
@@ -25,7 +26,11 @@ export async function GET(
       orderBy: { name: "asc" },
     }),
     prisma.user.findMany({
-      where: { orgId: params.orgId, role: "STUDENT", deactivatedAt: null },
+      where: {
+        orgId: params.orgId,
+        role: "STUDENT",
+        ...getActiveUserWhere(),
+      },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),

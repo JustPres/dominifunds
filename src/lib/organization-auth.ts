@@ -16,15 +16,37 @@ export async function getAuthorizedOfficerSession(orgId: string, options?: { req
 
   const activeUser = await prisma.user.findFirst({
     where: {
-      id: session.user.id,
       role: "OFFICER",
       orgId,
-      deactivatedAt: null,
+      OR: [
+        {
+          id: session.user.id,
+        },
+        ...(session.user.email
+          ? [
+              {
+                email: session.user.email,
+              },
+            ]
+          : []),
+      ],
     },
-    select: { id: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      orgId: true,
+      orgRole: true,
+      yearLevel: true,
+      officerAccessRole: true,
+      sectionId: true,
+      lastLoginAt: true,
+      mustChangePassword: true,
+      deactivatedAt: true,
+    },
   });
 
-  if (!activeUser) {
+  if (!activeUser || activeUser.deactivatedAt) {
     return {
       ok: false as const,
       status: 401,
@@ -33,12 +55,29 @@ export async function getAuthorizedOfficerSession(orgId: string, options?: { req
     };
   }
 
-  if (options?.requireManager && !canManageOrganization(session.user)) {
+  const resolvedSession = {
+    ...session,
+    user: {
+      ...session.user,
+      id: activeUser.id,
+      name: activeUser.name,
+      email: activeUser.email,
+      orgId: activeUser.orgId,
+      orgRole: activeUser.orgRole,
+      yearLevel: activeUser.yearLevel,
+      officerAccessRole: activeUser.officerAccessRole,
+      sectionId: activeUser.sectionId,
+      lastLoginAt: activeUser.lastLoginAt?.toISOString() ?? null,
+      mustChangePassword: Boolean(activeUser.mustChangePassword),
+    },
+  };
+
+  if (options?.requireManager && !canManageOrganization(resolvedSession.user)) {
     return {
       ok: false as const,
       status: 403,
       message: "Treasurer access required.",
-      session,
+      session: resolvedSession,
     };
   }
 
@@ -46,6 +85,6 @@ export async function getAuthorizedOfficerSession(orgId: string, options?: { req
     ok: true as const,
     status: 200,
     message: "",
-    session,
+    session: resolvedSession,
   };
 }

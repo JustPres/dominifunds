@@ -6,6 +6,7 @@ import { createActivityLog } from "@/lib/activity-log";
 import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
 import { getSessionOfficerAccessRole } from "@/lib/officer-access";
 import prisma from "@/lib/prisma";
+import { getActiveSectionWhere } from "@/lib/section-lifecycle";
 
 export async function POST(
   request: Request,
@@ -31,7 +32,7 @@ export async function POST(
       where: {
         id: sectionId,
         orgId: params.orgId,
-        deletedAt: null,
+        ...getActiveSectionWhere(),
       },
       select: { id: true, name: true },
     });

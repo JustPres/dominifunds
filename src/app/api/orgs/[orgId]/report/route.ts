@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { syncInstallmentStatuses } from "@/lib/member-report";
+import { getActiveUserWhere } from "@/lib/user-lifecycle";
 
 export async function GET(
   request: Request,
@@ -52,7 +53,9 @@ export async function GET(
 
   // Collection rate: paid vs total expected
   const allFunds = await prisma.fundType.findMany({ where: { orgId } });
-  const totalMembers = await prisma.user.count({ where: { orgId, role: "STUDENT", deactivatedAt: null } });
+  const totalMembers = await prisma.user.count({
+    where: { orgId, role: "STUDENT", ...getActiveUserWhere() },
+  });
   const totalExpected = allFunds.reduce((sum, f) => sum + f.amount, 0) * totalMembers;
   const collectionRatePercent = totalExpected > 0
     ? Math.round((totalCollected / totalExpected) * 100)
@@ -60,7 +63,7 @@ export async function GET(
 
   // Standings
   const allStudents = await prisma.user.findMany({
-    where: { orgId, role: "STUDENT", deactivatedAt: null },
+    where: { orgId, role: "STUDENT", ...getActiveUserWhere() },
     include: {
       transactions: { where: { status: "OVERDUE" } },
       installmentPlans: { where: { status: "ACTIVE" } },

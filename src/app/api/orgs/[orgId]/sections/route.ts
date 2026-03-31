@@ -6,6 +6,7 @@ import prisma from "@/lib/prisma";
 import { createActivityLog } from "@/lib/activity-log";
 import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
 import { getSessionOfficerAccessRole } from "@/lib/officer-access";
+import { getActiveSectionWhere } from "@/lib/section-lifecycle";
 
 function serializeSection(section: {
   id: string;
@@ -42,7 +43,7 @@ export async function GET(
   const sections = await prisma.section.findMany({
     where: {
       orgId: params.orgId,
-      ...(includeArchived ? {} : { deletedAt: null }),
+      ...(includeArchived ? {} : getActiveSectionWhere()),
     },
     include: {
       _count: {

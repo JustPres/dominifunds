@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { syncInstallmentStatuses } from "@/lib/member-report";
+import { getActiveUserWhere } from "@/lib/user-lifecycle";
 
 export async function GET() {
   const session = await auth();
@@ -29,7 +30,7 @@ export async function GET() {
 
   // Members with no overdue and no active installment
   const allStudents = await prisma.user.findMany({
-    where: { role: "STUDENT", orgId, deactivatedAt: null },
+    where: { role: "STUDENT", orgId, ...getActiveUserWhere() },
     include: {
       transactions: { where: { status: "OVERDUE", deletedAt: null } },
       installmentPlans: { where: { status: "ACTIVE", deletedAt: null } },

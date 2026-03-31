@@ -6,21 +6,18 @@ export interface SectionOption {
 }
 
 export async function getSections(orgId: string, options?: { includeArchived?: boolean }): Promise<SectionOption[]> {
-  try {
-    const query = options?.includeArchived ? "?includeArchived=true" : "";
-    const response = await fetch(`/api/orgs/${encodeURIComponent(orgId)}/sections${query}`, {
-      cache: "no-store",
-    });
+  const query = options?.includeArchived ? "?includeArchived=true" : "";
+  const response = await fetch(`/api/orgs/${encodeURIComponent(orgId)}/sections${query}`, {
+    cache: "no-store",
+  });
 
-    if (!response.ok) {
-      throw new Error();
-    }
+  const payload = await response.json().catch(() => ({}));
 
-    const payload = await response.json();
-    return payload.sections ?? [];
-  } catch {
-    return [];
+  if (!response.ok) {
+    throw new Error(payload.message || "Failed to load sections");
   }
+
+  return payload.sections ?? [];
 }
 
 export async function createSection(orgId: string, payload: { name: string; note?: string }) {

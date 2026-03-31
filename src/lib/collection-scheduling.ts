@@ -1,5 +1,6 @@
 import type { Transaction, TransactionStatus } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { getActiveUserWhere } from "@/lib/user-lifecycle";
 
 export interface DailyRosterFilters {
   date: Date;
@@ -141,7 +142,7 @@ export async function getDailyCollectionRoster(filters: DailyRosterFilters) {
       where: {
         orgId: filters.orgId,
         role: "STUDENT",
-        deactivatedAt: null,
+        ...getActiveUserWhere(),
         ...(filters.sectionId ? { sectionId: filters.sectionId } : {}),
       },
       include: {

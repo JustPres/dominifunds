@@ -3,7 +3,7 @@
 import { useDeferredValue, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Icon } from "@iconify/react";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
 import {
   archiveMember,
@@ -42,6 +42,7 @@ export default function MembersClient() {
   const [selectedDraftIds, setSelectedDraftIds] = useState<string[]>([]);
   const [bulkSectionId, setBulkSectionId] = useState("UNCHANGED");
   const [isManageSectionsOpen, setIsManageSectionsOpen] = useState(false);
+  const [hasHandledAuthFailure, setHasHandledAuthFailure] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -58,7 +59,7 @@ export default function MembersClient() {
     setBulkSectionId("UNCHANGED");
   }, [view, deferredSearchQuery, deferredSectionId, filter]);
 
-  const { data: allSections = [] } = useQuery({
+  const { data: allSections = [], error: sectionsError } = useQuery<Awaited<ReturnType<typeof getSections>>, Error>({
     queryKey: ["sections", orgId, "all"],
     queryFn: () => getSections(orgId as string, { includeArchived: true }),
     enabled: !!orgId,
@@ -72,7 +73,10 @@ export default function MembersClient() {
     view: view === "drafts" ? undefined : (view as UserDirectoryView),
   };
 
-  const { data: members = [], isLoading: isMembersLoading } = useQuery({
+  const { data: members = [], isLoading: isMembersLoading, error: membersError } = useQuery<
+    Awaited<ReturnType<typeof getMembers>>,
+    Error
+  >({
     queryKey: ["members", orgId, deferredSearchQuery, filter, deferredSectionId, view],
     queryFn: () =>
       getMembers(orgId as string, {
@@ -84,11 +88,37 @@ export default function MembersClient() {
     enabled: !!orgId && view !== "drafts",
   });
 
-  const { data: importDrafts = [], isLoading: isDraftsLoading } = useQuery({
+  const { data: importDrafts = [], isLoading: isDraftsLoading, error: draftsError } = useQuery<
+    Awaited<ReturnType<typeof getMemberImportDrafts>>,
+    Error
+  >({
     queryKey: ["member-import-drafts", orgId],
     queryFn: () => getMemberImportDrafts(orgId as string),
     enabled: !!orgId,
   });
+
+  useEffect(() => {
+    if (hasHandledAuthFailure) {
+      return;
+    }
+
+    const authError = [sectionsError, membersError, draftsError].find((error) => {
+      const message = error?.message ?? "";
+      return (
+        message.includes("Unauthorized") ||
+        message.includes("Account is inactive") ||
+        message.includes("Treasurer access required")
+      );
+    });
+
+    if (!authError) {
+      return;
+    }
+
+    setHasHandledAuthFailure(true);
+    toast.error(`${authError.message}. Sign in again.`);
+    void signOut({ callbackUrl: "/login?switch=1" });
+  }, [draftsError, hasHandledAuthFailure, membersError, sectionsError]);
 
   const filteredDrafts = importDrafts.filter((draft) => {
     const matchesSearch = deferredSearchQuery

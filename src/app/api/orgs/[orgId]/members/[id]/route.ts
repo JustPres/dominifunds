@@ -7,6 +7,7 @@ import { formatYearLevelLabel, resolveStudentOrgRole } from "@/lib/member-fields
 import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
 import { getSessionOfficerAccessRole } from "@/lib/officer-access";
 import prisma from "@/lib/prisma";
+import { getActiveSectionWhere } from "@/lib/section-lifecycle";
 
 async function findMember(orgId: string, id: string) {
   return prisma.user.findFirst({
@@ -85,7 +86,7 @@ export async function PATCH(
       where: {
         id: sectionId,
         orgId: params.orgId,
-        deletedAt: null,
+        ...getActiveSectionWhere(),
       },
       select: { id: true },
     });

@@ -9,6 +9,7 @@ import { createActivityLog } from "@/lib/activity-log";
 import { formatYearLevelLabel, resolveStudentOrgRole } from "@/lib/member-fields";
 import { getMemberReport, parseMemberReportFilterStatus, parseMemberReportView } from "@/lib/member-report";
 import { getSessionOfficerAccessRole } from "@/lib/officer-access";
+import { getActiveSectionWhere } from "@/lib/section-lifecycle";
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
       where: {
         id: normalizedSectionId,
         orgId,
-        deletedAt: null,
+        ...getActiveSectionWhere(),
       },
       select: { id: true },
     });

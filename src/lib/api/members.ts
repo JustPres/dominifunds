@@ -137,17 +137,18 @@ export function getMemberReportQuery(filters: MemberReportFilters = {}) {
 }
 
 export async function getMembers(orgId: string, filters: MemberReportFilters = {}): Promise<Member[]> {
-  try {
-    const query = getMemberReportQuery(filters);
-    const separator = query ? "&" : "?";
-    const res = await fetch(`/api/members${query}${separator}orgId=${encodeURIComponent(orgId)}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return [];
-    return res.json();
-  } catch {
-    return [];
+  const query = getMemberReportQuery(filters);
+  const separator = query ? "&" : "?";
+  const res = await fetch(`/api/members${query}${separator}orgId=${encodeURIComponent(orgId)}`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || data.message || "Failed to load members");
   }
+
+  return res.json();
 }
 
 export async function exportMembersCsv(orgId: string, filters: MemberReportFilters = {}): Promise<void> {

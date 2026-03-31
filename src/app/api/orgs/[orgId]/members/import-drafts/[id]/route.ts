@@ -6,6 +6,7 @@ import { createActivityLog } from "@/lib/activity-log";
 import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
 import { getSessionOfficerAccessRole } from "@/lib/officer-access";
 import prisma from "@/lib/prisma";
+import { getActiveSectionWhere } from "@/lib/section-lifecycle";
 
 async function findDraft(orgId: string, id: string) {
   return prisma.memberImportDraft.findFirst({
@@ -72,7 +73,7 @@ export async function PATCH(
       where: {
         id: sectionId,
         orgId: params.orgId,
-        deletedAt: null,
+        ...getActiveSectionWhere(),
       },
       select: { id: true },
     });
