@@ -3,6 +3,7 @@ import {
   MEMBER_REPORT_PRINT_COLUMNS,
   getMemberReportColumnValue,
 } from "@/lib/member-report";
+import { getOrgDisplayName } from "@/lib/org-display";
 
 const currencyFormatter = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -39,6 +40,8 @@ export default function MemberReportPrintSheet({
   orgId: string | null;
   report: MemberReportData;
 }) {
+  const orgDisplayName = getOrgDisplayName(orgId, "N/A");
+
   return (
     <div className="min-h-screen bg-[#f4efe8] px-6 py-8 text-[#241f1f] print:min-h-0 print:bg-white print:px-0 print:py-0">
       <div className="mx-auto max-w-6xl rounded-[28px] border border-[#d8cec4] bg-white shadow-[0_24px_80px_rgba(70,35,22,0.08)] print:max-w-none print:rounded-none print:border-none print:shadow-none">
@@ -61,7 +64,7 @@ export default function MemberReportPrintSheet({
             </div>
 
             <div className="grid gap-2 text-sm text-white/85 md:text-right">
-              <p><span className="font-semibold text-white">Organization:</span> {orgId || "N/A"}</p>
+              <p><span className="font-semibold text-white">Organization:</span> {orgDisplayName}</p>
               <p><span className="font-semibold text-white">Generated:</span> {formatGeneratedDate(report.generatedAt)}</p>
               <p><span className="font-semibold text-white">Search:</span> {report.filters.search || "None"}</p>
               <p><span className="font-semibold text-white">Status:</span> {report.filters.status}</p>

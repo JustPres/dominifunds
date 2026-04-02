@@ -159,6 +159,14 @@ export default function AddInstallmentDialog({ orgId }: AddInstallmentDialogProp
                 ))}
               </select>
               {errors.fundTypeId ? <span className="text-[10px] text-red-500">{errors.fundTypeId.message}</span> : null}
+              <p className="text-[11px] text-[#625f5f]">
+                Only funds with <span className="font-semibold">Allow Installments</span> enabled appear here.
+              </p>
+              {options && options.funds.length === 0 ? (
+                <p className="text-[11px] font-semibold text-amber-700">
+                  No installment-enabled funds are available for this organization yet.
+                </p>
+              ) : null}
             </div>
           </div>
 

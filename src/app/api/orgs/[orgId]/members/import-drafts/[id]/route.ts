@@ -7,6 +7,11 @@ import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
 import { getSessionOfficerAccessRole } from "@/lib/officer-access";
 import prisma from "@/lib/prisma";
 import { getActiveSectionWhere } from "@/lib/section-lifecycle";
+import {
+  getStudentEmailValidationMessage,
+  isValidStudentEmail,
+  normalizeStudentEmail,
+} from "@/lib/student-email";
 
 async function findDraft(orgId: string, id: string) {
   return prisma.memberImportDraft.findFirst({
@@ -62,7 +67,7 @@ export async function PATCH(
 
   const body = await request.json();
   const name = body.name === undefined ? undefined : String(body.name).trim();
-  const email = body.email === undefined ? undefined : String(body.email).trim().toLowerCase();
+  const email = body.email === undefined ? undefined : normalizeStudentEmail(String(body.email));
   const role = body.role === undefined ? undefined : String(body.role).trim();
   const yearLevel = body.yearLevel === undefined ? undefined : String(body.yearLevel).trim();
   const sectionId = body.sectionId === undefined ? undefined : body.sectionId ? String(body.sectionId) : null;
@@ -83,7 +88,24 @@ export async function PATCH(
     }
   }
 
-  const nextStatus = email ? "READY" : "INCOMPLETE";
+  const issues: string[] = [];
+
+  if (!name?.trim() && name !== undefined) {
+    issues.push("Missing student name.");
+  }
+
+  if (!email) {
+    issues.push("Missing email address.");
+  } else {
+    const emailValidationMessage = getStudentEmailValidationMessage(email);
+
+    if (emailValidationMessage) {
+      issues.push(emailValidationMessage);
+    }
+  }
+
+  const nextStatus = email && isValidStudentEmail(email) && issues.length === 0 ? "READY" : "INCOMPLETE";
+  const nextIssueSummary = issues.length > 0 ? issues.join(" ") : null;
 
   const updated = await prisma.memberImportDraft.update({
     where: { id: existing.id },
@@ -93,7 +115,7 @@ export async function PATCH(
       ...(role !== undefined ? { orgRole: role || "Member" } : {}),
       ...(yearLevel !== undefined ? { yearLevel: yearLevel || null } : {}),
       ...(sectionId !== undefined ? { sectionId } : {}),
-      ...(issueSummary !== undefined ? { issueSummary: issueSummary || null } : {}),
+      ...(issueSummary !== undefined ? { issueSummary: issueSummary || null } : { issueSummary: nextIssueSummary }),
       status: nextStatus,
     },
     include: {

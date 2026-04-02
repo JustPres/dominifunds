@@ -143,7 +143,7 @@ export default function ImportMembersDialog({ orgId, canManage }: ImportMembersD
               <div>
                 <p className="text-sm font-semibold text-[#343434]">Accepted columns</p>
                 <p className="text-xs text-[#625f5f]">
-                  Name and email create active members. Name-only rows go to the import review queue as drafts.
+                  Name and `@sdca.edu.ph` email create active members. Name-only or invalid-email rows go to the import review queue as drafts.
                 </p>
               </div>
 
@@ -233,7 +233,7 @@ export default function ImportMembersDialog({ orgId, canManage }: ImportMembersD
                           <td className="px-4 py-3 text-[#343434]">
                             <div className="font-medium">{row.name || "-"}</div>
                             <div className="text-xs text-[#625f5f]">
-                              {row.normalizedRole} • {row.normalizedYearLevel ? `${row.normalizedYearLevel} Year` : "No year"}
+                              {row.normalizedRole} - {row.normalizedYearLevel ? `${row.normalizedYearLevel} Year` : "No year"}
                             </div>
                           </td>
                           <td className="px-4 py-3 text-[#625f5f]">{row.email || "-"}</td>

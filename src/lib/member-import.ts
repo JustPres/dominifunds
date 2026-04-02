@@ -5,6 +5,12 @@ import bcrypt from "bcryptjs";
 import { createActivityLog } from "@/lib/activity-log";
 import prisma from "@/lib/prisma";
 import { normalizeYearLevel } from "@/lib/member-fields";
+import { getActiveSectionWhere } from "@/lib/section-lifecycle";
+import {
+  getStudentEmailValidationMessage,
+  isValidStudentEmail,
+  normalizeStudentEmail,
+} from "@/lib/student-email";
 
 export const MEMBER_IMPORT_ALLOWED_ROLES = [
   "Member",
@@ -93,7 +99,7 @@ function normalizeHeader(value: unknown) {
 }
 
 function normalizeEmail(value: string) {
-  return value.trim().toLowerCase();
+  return normalizeStudentEmail(value);
 }
 
 function normalizeRole(value: string): MemberImportAllowedRole | null {
@@ -161,7 +167,7 @@ export async function buildMemberImportPreview(orgId: string, rows: MemberImport
     prisma.section.findMany({
       where: {
         orgId,
-        deletedAt: null,
+        ...getActiveSectionWhere(),
       },
       select: {
         id: true,
@@ -220,6 +226,14 @@ function classifyMemberImportRow(
     issues.push("Missing student name.");
   }
 
+  if (email) {
+    const emailValidationMessage = getStudentEmailValidationMessage(email);
+
+    if (emailValidationMessage) {
+      issues.push(emailValidationMessage);
+    }
+  }
+
   if (row.yearLevel && !normalizedYearLevel) {
     issues.push("Year level is not recognized.");
   }
@@ -259,6 +273,10 @@ function classifyMemberImportRow(
   };
 }
 
+function getDraftStatus(email: string, issues: string[]) {
+  return email && isValidStudentEmail(email) && issues.length === 0 ? "READY" : "INCOMPLETE";
+}
+
 export async function commitMemberImport(
   orgId: string,
   rows: MemberImportRowInput[],
@@ -292,7 +310,7 @@ export async function commitMemberImport(
           yearLevel: row.normalizedYearLevel,
           sectionId: row.sectionId,
           sourceFileName: sourceFileName ?? null,
-          status: row.email ? "READY" : "INCOMPLETE",
+          status: getDraftStatus(row.email, row.issues),
           issueSummary: row.issues.join(" "),
           rawData: {
             rowNumber: row.rowNumber,
@@ -452,7 +470,7 @@ export async function commitMemberImport(
       const createdMember = await prisma.user.create({
         data: {
           name: row.name.trim(),
-          email: row.email,
+          email: normalizeStudentEmail(row.email),
           password: passwordHash,
           role: "STUDENT",
           orgId,

@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { createActivityLog } from "@/lib/activity-log";
+import { getActiveFundWhere } from "@/lib/fund-lifecycle";
 import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
 import { getSessionOfficerAccessRole } from "@/lib/officer-access";
 import prisma from "@/lib/prisma";
@@ -24,7 +25,7 @@ export async function GET(
   const fundTypes = await prisma.fundType.findMany({
     where: {
       orgId: params.orgId,
-      ...(includeArchived ? {} : { archivedAt: null }),
+      ...(includeArchived ? {} : getActiveFundWhere()),
     },
     include: {
       _count: {

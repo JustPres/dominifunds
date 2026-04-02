@@ -11,6 +11,7 @@ import {
   updateMemberImportDraft,
   type MemberImportDraft,
 } from "@/lib/api/members";
+import { isOptionalValidStudentEmail } from "@/lib/student-email";
 import type { SectionOption } from "@/lib/api/sections";
 import {
   Dialog,
@@ -27,8 +28,8 @@ const draftSchema = z.object({
   email: z
     .string()
     .trim()
-    .refine((value) => !value || z.string().email().safeParse(value).success, {
-      message: "Use a valid email address or leave it blank.",
+    .refine(isOptionalValidStudentEmail, {
+      message: "Use an @sdca.edu.ph email address or leave it blank.",
     }),
   role: z.enum(["Member", "Section Representative", "Committee Lead", "Volunteer"]),
   yearLevel: z.enum(["", "1st", "2nd", "3rd", "4th"]),
@@ -137,7 +138,11 @@ export default function ImportDraftEditDialog({
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-[#343434]">School Email</label>
-            <input {...register("email")} className={inputClass} placeholder="Required before conversion" />
+            <input
+              {...register("email")}
+              className={inputClass}
+              placeholder="Required before conversion (name@sdca.edu.ph)"
+            />
             {errors.email ? <span className="text-[11px] font-bold text-red-500">{errors.email.message}</span> : null}
           </div>
 

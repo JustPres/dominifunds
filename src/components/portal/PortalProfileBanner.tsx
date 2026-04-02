@@ -5,6 +5,7 @@ import { Session } from "next-auth";
 import { CircleAlert, CircleCheckBig, CreditCard, Landmark, WalletCards } from "lucide-react";
 import { formatYearLevelLabel } from "@/lib/member-fields";
 import type { PortalOverview, PortalSecuritySummary } from "@/lib/api/portal";
+import { getOrgDisplayName } from "@/lib/org-display";
 
 const currencyFormatter = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -26,6 +27,7 @@ export function PortalProfileBanner({
   const yearLevel = formatYearLevelLabel(session?.user?.yearLevel, "Member");
   const lastLoginAt = securitySummary?.lastLoginAt || session?.user?.lastLoginAt || null;
   const standing = getStandingMeta(overview.standing);
+  const orgDisplayName = getOrgDisplayName(session?.user?.orgId);
 
   return (
     <section className="overflow-hidden rounded-[32px] border border-[#f1dfd8] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.22),_transparent_28%),linear-gradient(140deg,#8f1c20_0%,#b7302f_52%,#d68c52_100%)] p-6 text-white shadow-[0_24px_60px_rgba(143,28,32,0.16)] sm:p-8">
@@ -58,7 +60,7 @@ export function PortalProfileBanner({
             <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2">{email}</span>
             <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2">{yearLevel}</span>
             <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2">
-              {session?.user?.orgId || "Organization"}
+              {orgDisplayName}
             </span>
           </div>
         </div>

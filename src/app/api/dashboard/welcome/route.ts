@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { getActiveFundWhere } from "@/lib/fund-lifecycle";
+import { getOrgDisplayName } from "@/lib/org-display";
 import prisma from "@/lib/prisma";
 import { getActiveUserWhere } from "@/lib/user-lifecycle";
 
@@ -16,7 +18,7 @@ export async function GET() {
     where: { orgId, role: "STUDENT", ...getActiveUserWhere() },
   });
 
-  const allFunds = await prisma.fundType.findMany({ where: { orgId, archivedAt: null } });
+  const allFunds = await prisma.fundType.findMany({ where: { orgId, ...getActiveFundWhere() } });
   const totalExpected = allFunds.reduce((sum, f) => sum + f.amount, 0) * memberCount;
 
   const totalCollected = await prisma.transaction.aggregate({
@@ -29,7 +31,7 @@ export async function GET() {
     : 0;
 
   return NextResponse.json({
-    orgName: orgId || "Organization",
+    orgName: getOrgDisplayName(orgId),
     memberCount,
     collectionRate,
   });

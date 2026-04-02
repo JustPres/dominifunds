@@ -6,6 +6,7 @@ import { Icon } from "@iconify/react";
 import { format } from "date-fns";
 import { useSession } from "next-auth/react";
 import { useNotificationStore } from "@/stores/notification-store";
+import { getOrgDisplayName } from "@/lib/org-display";
 import NotifPanel from "./NotifPanel";
 
 const pageMeta: Record<string, { icon: string; title: string }> = {
@@ -32,6 +33,7 @@ export default function Topbar() {
   // Find the matching page meta
   const currentPage = pageMeta[pathname] ?? pageMeta["/dashboard"];
   const currentDate = format(new Date(), "MMMM yyyy");
+  const orgDisplayName = getOrgDisplayName(session?.user?.orgId, "SDCA");
 
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-[#F0ECEC] bg-white px-6 font-body">
@@ -45,7 +47,7 @@ export default function Topbar() {
           {currentPage.title}
         </h1>
         <span className="text-[#625f5f]/30">|</span>
-        <span className="text-xs text-[#625f5f]">{session?.user?.orgId || "SDCA"}</span>
+        <span className="text-xs text-[#625f5f]">{orgDisplayName}</span>
       </div>
 
       {/* Right — Date, Bell, Avatar */}

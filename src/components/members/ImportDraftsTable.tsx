@@ -138,7 +138,7 @@ export default function ImportDraftsTable({
                     <div>
                       <p className="font-medium text-[#343434]">{draft.name}</p>
                       <p className="text-[11px] text-[#625f5f]">
-                        {draft.role} • {draft.yearLevel ? `${draft.yearLevel} Year` : "No year level"}
+                        {draft.role} - {draft.yearLevel ? `${draft.yearLevel} Year` : "No year level"}
                       </p>
                       <p className="text-[11px] text-[#625f5f]/80">
                         Added {new Date(draft.createdAt).toLocaleDateString("en-PH")}
@@ -179,7 +179,7 @@ export default function ImportDraftsTable({
                       />
                       <button
                         type="button"
-                        disabled={!canManage || !draft.email || convertMutation.isPending}
+                        disabled={!canManage || draft.status !== "READY" || convertMutation.isPending}
                         onClick={() => convertMutation.mutate(draft.id)}
                         className="flex h-8 items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
                       >

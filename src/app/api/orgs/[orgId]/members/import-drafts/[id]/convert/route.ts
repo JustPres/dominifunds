@@ -8,6 +8,7 @@ import { formatYearLevelLabel, resolveStudentOrgRole } from "@/lib/member-fields
 import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
 import { getSessionOfficerAccessRole } from "@/lib/officer-access";
 import prisma from "@/lib/prisma";
+import { getStudentEmailValidationMessage, normalizeStudentEmail } from "@/lib/student-email";
 
 async function findDraft(orgId: string, id: string) {
   return prisma.memberImportDraft.findFirst({
@@ -41,8 +42,15 @@ export async function POST(
     return NextResponse.json({ message: "Draft still needs a name and email before conversion." }, { status: 400 });
   }
 
+  const normalizedEmail = normalizeStudentEmail(draft.email);
+  const emailValidationMessage = getStudentEmailValidationMessage(normalizedEmail);
+
+  if (emailValidationMessage) {
+    return NextResponse.json({ message: emailValidationMessage }, { status: 400 });
+  }
+
   const existing = await prisma.user.findUnique({
-    where: { email: draft.email.trim().toLowerCase() },
+    where: { email: normalizedEmail },
     select: {
       id: true,
       orgId: true,
@@ -74,10 +82,10 @@ export async function POST(
     return NextResponse.json({ message: "Another account already uses that email." }, { status: 409 });
   } else {
     member = await prisma.user.create({
-      data: {
-        name: draft.name.trim(),
-        email: draft.email.trim().toLowerCase(),
-        password: passwordHash,
+        data: {
+          name: draft.name.trim(),
+        email: normalizedEmail,
+          password: passwordHash,
         role: "STUDENT",
         orgId: params.orgId,
         orgRole: draft.orgRole ?? "Member",

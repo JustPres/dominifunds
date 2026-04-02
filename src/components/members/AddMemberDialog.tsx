@@ -15,6 +15,7 @@ import {
   updateMember,
 } from "@/lib/api/members";
 import { normalizeYearLevel } from "@/lib/member-fields";
+import { isValidStudentEmail } from "@/lib/student-email";
 import type { SectionOption } from "@/lib/api/sections";
 import {
   Dialog,
@@ -37,7 +38,12 @@ const YEAR_LEVEL_OPTIONS = ["1st", "2nd", "3rd", "4th"] as const;
 
 const memberSchema = z.object({
   name: z.string().min(2, "Name is required (at least 2 characters)"),
-  email: z.string().email("Invalid email address"),
+  email: z
+    .string()
+    .email("Invalid email address")
+    .refine(isValidStudentEmail, {
+      message: "Student accounts must use an @sdca.edu.ph email address.",
+    }),
   yearLevel: z.enum(YEAR_LEVEL_OPTIONS),
   role: z.enum(MEMBER_ROLE_OPTIONS),
   sectionId: z.string().optional(),

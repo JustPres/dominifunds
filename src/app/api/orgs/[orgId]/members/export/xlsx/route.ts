@@ -10,6 +10,7 @@ import {
   parseMemberReportFilterStatus,
   parseMemberReportView,
 } from "@/lib/member-report";
+import { getOrgDisplayName } from "@/lib/org-display";
 
 function toBodyBytes(value: ArrayBuffer | Uint8Array) {
   return value instanceof ArrayBuffer ? new Uint8Array(value) : Uint8Array.from(value);
@@ -35,6 +36,7 @@ export async function GET(
 
   const workbook = new Workbook();
   const sheet = workbook.addWorksheet("Members Report");
+  const orgDisplayName = getOrgDisplayName(params.orgId, params.orgId);
 
   sheet.mergeCells("A1:G1");
   sheet.getCell("A1").value = "DominiFunds Members Payment Standing Report";
@@ -47,7 +49,7 @@ export async function GET(
   sheet.getCell("A1").alignment = { vertical: "middle", horizontal: "left" };
   sheet.getRow(1).height = 24;
 
-  sheet.getCell("A2").value = `Organization: ${params.orgId}`;
+  sheet.getCell("A2").value = `Organization: ${orgDisplayName}`;
   sheet.getCell("C2").value = `Generated: ${new Date(report.generatedAt).toLocaleString("en-PH")}`;
   sheet.getCell("E2").value = `Status: ${report.filters.status}`;
   sheet.getCell("F2").value = `Search: ${report.filters.search || "None"}`;

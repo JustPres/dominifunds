@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { LogOut, ShieldCheck } from "lucide-react";
+import { getOrgDisplayName } from "@/lib/org-display";
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
@@ -15,6 +16,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         .toUpperCase()
     : "ST";
   const roleLabel = session?.user?.role === "OFFICER" ? "Officer" : "Student";
+  const orgDisplayName = getOrgDisplayName(session?.user?.orgId);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(161,33,36,0.07),_transparent_24%),linear-gradient(180deg,#f8f3ee_0%,#f4ede7_44%,#f7f3ee_100%)] text-[#241a1a]">
@@ -32,7 +34,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
           <div className="hidden items-center gap-3 rounded-full border border-[#eadfd9] bg-white/80 px-4 py-2 text-sm text-[#6f5d59] sm:flex">
             <ShieldCheck className="h-4 w-4 text-[#8f1c20]" />
-            <span>{session?.user?.orgId || "Organization"}</span>
+            <span>{orgDisplayName}</span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">

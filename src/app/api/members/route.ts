@@ -10,6 +10,7 @@ import { formatYearLevelLabel, resolveStudentOrgRole } from "@/lib/member-fields
 import { getMemberReport, parseMemberReportFilterStatus, parseMemberReportView } from "@/lib/member-report";
 import { getSessionOfficerAccessRole } from "@/lib/officer-access";
 import { getActiveSectionWhere } from "@/lib/section-lifecycle";
+import { getStudentEmailValidationMessage, normalizeStudentEmail } from "@/lib/student-email";
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const name = String(body.name ?? "").trim();
-  const email = String(body.email ?? "").trim().toLowerCase();
+  const email = normalizeStudentEmail(String(body.email ?? ""));
   const role = String(body.role ?? "Member").trim() || "Member";
   const yearLevel = body.yearLevel ? String(body.yearLevel).trim() : null;
   const orgId = String(body.orgId ?? "").trim();
@@ -90,6 +91,12 @@ export async function POST(request: Request) {
 
   if (!name || !email) {
     return NextResponse.json({ error: "Name and school email are required." }, { status: 400 });
+  }
+
+  const emailValidationMessage = getStudentEmailValidationMessage(email);
+
+  if (emailValidationMessage) {
+    return NextResponse.json({ error: emailValidationMessage }, { status: 400 });
   }
 
   if (temporaryPassword.length < 8) {

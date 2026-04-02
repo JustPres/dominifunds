@@ -4,6 +4,8 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
 import prisma from "@/lib/prisma";
+import { getActiveFundWhere } from "@/lib/fund-lifecycle";
+import { getActiveUserWhere } from "@/lib/user-lifecycle";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -23,14 +25,14 @@ export async function GET(request: Request) {
     prisma.fundType.findMany({
       where: {
         orgId,
-        archivedAt: null,
+        ...getActiveFundWhere(),
         allowInstallment: true,
       },
       select: { id: true, name: true, amount: true },
       orderBy: { name: "asc" },
     }),
     prisma.user.findMany({
-      where: { orgId, role: "STUDENT", deactivatedAt: null },
+      where: { orgId, role: "STUDENT", ...getActiveUserWhere() },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),

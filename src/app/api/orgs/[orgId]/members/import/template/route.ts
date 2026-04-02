@@ -33,14 +33,14 @@ export async function GET(
       email: "juan.delacruz@sdca.edu.ph",
       yearLevel: "3rd",
       role: "Member",
-      section: "BSIT 3A",
+      section: "Dominixode 3A",
     },
     {
       name: "Maria Santos",
       email: "",
       yearLevel: "2nd",
       role: "Member",
-      section: "BSIT 2B",
+      section: "Dominixode 2B",
     },
   ]);
 

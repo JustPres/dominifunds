@@ -1,5 +1,6 @@
 import type { Transaction, TransactionStatus } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { getActiveFundWhere } from "@/lib/fund-lifecycle";
 import { getActiveUserWhere } from "@/lib/user-lifecycle";
 
 export interface DailyRosterFilters {
@@ -154,7 +155,7 @@ export async function getDailyCollectionRoster(filters: DailyRosterFilters) {
       where: {
         orgId: filters.orgId,
         required: true,
-        archivedAt: null,
+        ...getActiveFundWhere(),
       },
       orderBy: { name: "asc" },
     }),

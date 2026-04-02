@@ -181,7 +181,7 @@ export default function ManageSectionsDialog({
               <input
                 value={newSectionName}
                 onChange={(event) => setNewSectionName(event.target.value)}
-                placeholder="e.g. BSIT 3A"
+                placeholder="e.g. Dominixode 3A"
                 className={inputClass}
               />
               <button

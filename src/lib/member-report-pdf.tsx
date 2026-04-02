@@ -5,6 +5,7 @@ import {
   MemberReportData,
   MEMBER_REPORT_PRINT_COLUMNS,
 } from "@/lib/member-report";
+import { getOrgDisplayName } from "@/lib/org-display";
 
 const styles = StyleSheet.create({
   page: {
@@ -132,9 +133,11 @@ export function MemberReportPdfDocument({
   orgId: string | null;
   report: MemberReportData;
 }): React.ReactElement<DocumentProps> {
+  const orgDisplayName = getOrgDisplayName(orgId, "N/A");
+
   return (
     <Document
-      title={`Members Report ${orgId || "Org"}`}
+      title={`Members Report ${orgDisplayName}`}
       author="DominiFunds"
       subject="Members payment standing report"
     >
@@ -148,7 +151,7 @@ export function MemberReportPdfDocument({
           <View style={styles.metaGrid}>
             <View style={styles.metaItem}>
               <Text style={styles.metaLabel}>Organization</Text>
-              <Text style={styles.metaValue}>{orgId || "N/A"}</Text>
+              <Text style={styles.metaValue}>{orgDisplayName}</Text>
             </View>
             <View style={styles.metaItem}>
               <Text style={styles.metaLabel}>Generated</Text>

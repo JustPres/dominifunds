@@ -30,16 +30,20 @@ export default function ReportsClient() {
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
+    if (!orgId) {
+      toast.error("Organization context is missing.", { id: "export-pdf" });
+      return;
+    }
+
     setIsExporting(true);
-    toast.loading("Generating Secure PDF Report Header...", { id: "export-pdf" });
+    toast.loading("Generating annual report PDF...", { id: "export-pdf" });
     try {
-      const res = await exportReportPdf();
-      if (res.success) {
-        toast.success("PDF Compiled Successfully. Triggering raw download.", { id: "export-pdf" });
-        // In reality, this fires a link.click() download against the generated blob
-      }
-    } catch {
-      toast.error("Generation pipeline failed. Internal limit reached.", { id: "export-pdf" });
+      await exportReportPdf(orgId, currentYear);
+      toast.success("Annual report PDF downloaded.", { id: "export-pdf" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to export the annual report PDF.", {
+        id: "export-pdf",
+      });
     } finally {
       setIsExporting(false);
     }

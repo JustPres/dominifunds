@@ -1,60 +1,19 @@
-export interface ReportKPIs {
-  totalCollected: number;
-  installmentPlansCreated: number;
-  completionRatePercent: number; // completed plans / total plans
-  collectionRatePercent: number; // members with no overdue
-}
+import type { ReportData } from "@/lib/annual-report";
+import { getOrgDisplayName } from "@/lib/org-display";
 
-export interface MonthlyCollection {
-  month: string;
-  amount: number;
-}
-
-export interface MemberStanding {
-  goodStanding: { count: number; percent: number };
-  activeInstallment: { count: number; percent: number };
-  overdue: { count: number; percent: number };
-}
-
-export interface FundBreakdown {
-  id: string;
-  fundName: string;
-  totalCollected: number;
-  installmentSplit: number;
-  fullPaymentSplit: number;
-  completionRate: number; // percentage
-}
-
-export interface ActiveInstallmentPlan {
-  id: string;
-  memberName: string;
-  fundName: string;
-  paidSegments: number;
-  totalSegments: number;
-  remainingAmount: number;
-}
-
-export interface OfficerLog {
-  id: string;
-  role: string;
-  officerName: string;
-  termStart: string;
-  termEnd: string;
-  status: "ACTIVE" | "COMPLETED" | "RESIGNED";
-}
-
-export interface ReportData {
-  kpis: ReportKPIs;
-  monthlyCollections: MonthlyCollection[];
-  standings: MemberStanding;
-  fundBreakdowns: FundBreakdown[];
-  installments: ActiveInstallmentPlan[];
-  officerLogs: OfficerLog[];
-}
+export type {
+  ActiveInstallmentPlan,
+  FundBreakdown,
+  MemberStanding,
+  MonthlyCollection,
+  OfficerLog,
+  ReportData,
+  ReportKPIs,
+} from "@/lib/annual-report";
 
 export async function getReportData(orgId: string, year: number): Promise<ReportData> {
   const res = await fetch(`/api/orgs/${orgId}/report?year=${year}`);
-  
+
   if (!res.ok) {
     return {
       kpis: {
@@ -74,18 +33,36 @@ export async function getReportData(orgId: string, year: number): Promise<Report
       officerLogs: [],
     };
   }
-  
+
   return await res.json();
 }
 
-export async function exportReportPdf(): Promise<{ success: boolean; fakeUrl: string }> {
-  const res = await fetch(`/api/reports/export`, { method: "POST" });
+export async function exportReportPdf(orgId: string, year: number): Promise<void> {
+  const res = await fetch(`/api/orgs/${encodeURIComponent(orgId)}/report/export/pdf?year=${year}`, {
+    cache: "no-store",
+  });
+
   if (!res.ok) {
-    throw new Error("PDF generation failed");
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to generate the annual report PDF");
   }
-  const data = await res.json();
-  return {
-    success: true,
-    fakeUrl: data.url || "blob:http://localhost:3000/mock-report-uuid-pdf",
-  };
+
+  const blob = await res.blob();
+  const objectUrl = window.URL.createObjectURL(blob);
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const filenameMatch = disposition.match(/filename="([^"]+)"/);
+  const filename =
+    filenameMatch?.[1] ??
+    `annual-report-${getOrgDisplayName(orgId, orgId).toLowerCase()}-${year}.pdf`;
+
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  window.setTimeout(() => {
+    window.URL.revokeObjectURL(objectUrl);
+  }, 1000);
 }
