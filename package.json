@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:seed": "jiti prisma/seed.ts",
     "db:backfill-reporting": "node prisma/backfill-reporting.cjs"
   },
   "dependencies": {

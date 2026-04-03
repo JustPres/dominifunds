@@ -1,20 +1,28 @@
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
+import { auth } from "@/lib/auth";
+import { getDashboardThemeCssVariables } from "@/lib/org-branding";
+import { resolveOrganizationSettings } from "@/lib/org-settings";
+import type { CSSProperties } from "react";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="flex h-screen font-body">
-      {/* Sidebar — fixed 220px */}
-      <Sidebar />
+  const session = await auth();
+  const orgSettings = await resolveOrganizationSettings(session?.user?.orgId);
 
-      {/* Main area — offset by sidebar width */}
+  return (
+    <div
+      className="flex h-screen font-body"
+      style={getDashboardThemeCssVariables(orgSettings.themePreset) as CSSProperties}
+    >
+      <Sidebar orgDisplayName={orgSettings.displayName} />
+
       <div className="ml-[220px] flex flex-1 flex-col">
-        <Topbar />
-        <main className="flex-1 overflow-y-auto bg-[#F9F7F6] p-6">
+        <Topbar orgDisplayName={orgSettings.displayName} />
+        <main className="flex-1 overflow-y-auto bg-[var(--dashboard-main-bg)] p-6">
           {children}
         </main>
       </div>

@@ -9,6 +9,7 @@ import {
   parseMemberReportFilterStatus,
   parseMemberReportView,
 } from "@/lib/member-report";
+import { resolveOrganizationSettings } from "@/lib/org-settings";
 
 function escapeCsv(value: string | number) {
   const normalized = String(value ?? "");
@@ -35,6 +36,7 @@ export async function GET(
     sectionId: searchParams.get("sectionId") || undefined,
     view: parseMemberReportView(searchParams.get("view")),
   });
+  const orgSettings = await resolveOrganizationSettings(params.orgId);
 
   const csv = [
     MEMBER_REPORT_EXPORT_COLUMNS.map((column) => escapeCsv(column.header)).join(","),
@@ -56,7 +58,7 @@ export async function GET(
   return new Response(`\uFEFF${csv}`, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="members-report-${params.orgId}-${fileDate}.csv"`,
+      "Content-Disposition": `attachment; filename="members-report-${orgSettings.displayName.replace(/[^a-z0-9-]+/gi, "-")}-${fileDate}.csv"`,
       "Cache-Control": "no-store",
     },
   });

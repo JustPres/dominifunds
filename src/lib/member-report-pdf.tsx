@@ -5,7 +5,6 @@ import {
   MemberReportData,
   MEMBER_REPORT_PRINT_COLUMNS,
 } from "@/lib/member-report";
-import { getOrgDisplayName } from "@/lib/org-display";
 
 const styles = StyleSheet.create({
   page: {
@@ -127,14 +126,12 @@ function formatValue(value: string | number, kind?: "text" | "currency" | "date"
 }
 
 export function MemberReportPdfDocument({
-  orgId,
+  orgDisplayName,
   report,
 }: {
-  orgId: string | null;
+  orgDisplayName: string;
   report: MemberReportData;
 }): React.ReactElement<DocumentProps> {
-  const orgDisplayName = getOrgDisplayName(orgId, "N/A");
-
   return (
     <Document
       title={`Members Report ${orgDisplayName}`}

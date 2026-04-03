@@ -5,6 +5,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { auth } from "@/lib/auth";
 import { getMemberReport, parseMemberReportFilterStatus, parseMemberReportView } from "@/lib/member-report";
 import { MemberReportPdfDocument } from "@/lib/member-report-pdf";
+import { resolveOrganizationSettings } from "@/lib/org-settings";
 
 function toBodyBytes(value: ArrayBuffer | Uint8Array) {
   return value instanceof ArrayBuffer ? new Uint8Array(value) : Uint8Array.from(value);
@@ -27,10 +28,11 @@ export async function GET(
     sectionId: searchParams.get("sectionId") || undefined,
     view: parseMemberReportView(searchParams.get("view")),
   });
+  const orgSettings = await resolveOrganizationSettings(params.orgId);
 
   const buffer = await renderToBuffer(
     MemberReportPdfDocument({
-      orgId: params.orgId,
+      orgDisplayName: orgSettings.displayName,
       report,
     })
   );
@@ -40,7 +42,7 @@ export async function GET(
   return new Response(pdfBytes, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="members-report-${params.orgId}-${fileDate}.pdf"`,
+      "Content-Disposition": `attachment; filename="members-report-${orgSettings.displayName.replace(/[^a-z0-9-]+/gi, "-")}-${fileDate}.pdf"`,
       "Cache-Control": "no-store",
     },
   });

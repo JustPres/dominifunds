@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import AutoPrint from "@/app/(reports)/dashboard/members/report/print/auto-print";
 import CollectionRosterPrintSheet from "@/components/calendar/CollectionRosterPrintSheet";
 import { formatWeekdayLabel, getDailyCollectionRoster, isoDate } from "@/lib/collection-scheduling";
+import { resolveOrganizationSettings } from "@/lib/org-settings";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -42,12 +43,13 @@ export default async function CollectionRosterPrintPage({
         },
       })
     : null;
+  const orgSettings = await resolveOrganizationSettings(session.user.orgId);
 
   return (
     <>
       <AutoPrint enabled={searchParams.autoprint === "1"} />
       <CollectionRosterPrintSheet
-        orgId={session.user.orgId}
+        orgDisplayName={orgSettings.displayName}
         date={isoDate(targetDate) || ""}
         weekday={formatWeekdayLabel(targetDate.getDay())}
         activePeriodName={roster.activePeriod?.name || "No active collection period"}

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PortalProfileBanner } from "@/components/portal/PortalProfileBanner";
+import { getOrganizationSettings } from "@/lib/api/org-settings";
 import {
   PortalInstallmentsSection,
   PortalObligationsPanel,
@@ -19,6 +20,7 @@ import {
   mapPortalTransactions,
   type PortalSecuritySummary,
 } from "@/lib/api/portal";
+import { getOrgDisplayName } from "@/lib/org-display";
 
 export default function PortalClient() {
   const { data: session, status } = useSession();
@@ -64,6 +66,12 @@ export default function PortalClient() {
       return res.json();
     },
   });
+  const { data: orgSettings = null, isLoading: isLoadingOrgSettings } = useQuery({
+    queryKey: ["org-settings", orgId],
+    enabled: !!orgId,
+    queryFn: () => getOrganizationSettings(orgId as string),
+    staleTime: 60_000,
+  });
 
   const installments = useMemo(
     () => mapPortalInstallments(Array.isArray(installmentsResponse) ? installmentsResponse : []),
@@ -95,7 +103,12 @@ export default function PortalClient() {
   );
 
   const isLoading =
-    status === "loading" || isLoadingInstallments || isLoadingHistory || isLoadingFunds || isLoadingSecurity;
+    status === "loading" ||
+    isLoadingInstallments ||
+    isLoadingHistory ||
+    isLoadingFunds ||
+    isLoadingSecurity ||
+    isLoadingOrgSettings;
 
   if (isLoading) {
     return (
@@ -113,7 +126,12 @@ export default function PortalClient() {
 
   return (
     <div className="space-y-6">
-      <PortalProfileBanner session={session} overview={overview} securitySummary={securitySummary} />
+      <PortalProfileBanner
+        session={session}
+        overview={overview}
+        securitySummary={securitySummary}
+        orgDisplayName={orgSettings?.displayName ?? getOrgDisplayName(orgId)}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
         <PortalOverviewPanel overview={overview} />

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getMemberReport, parseMemberReportFilterStatus, parseMemberReportView } from "@/lib/member-report";
+import { resolveOrganizationSettings } from "@/lib/org-settings";
 import MemberReportPrintSheet from "@/components/members/MemberReportPrintSheet";
 import AutoPrint from "./auto-print";
 
@@ -33,11 +34,12 @@ export default async function MembersReportPrintPage({
     sectionId: searchParams.sectionId,
     view: parseMemberReportView(searchParams.view),
   });
+  const orgSettings = await resolveOrganizationSettings(session.user.orgId);
 
   return (
     <>
       <AutoPrint enabled={searchParams.autoprint === "1"} />
-      <MemberReportPrintSheet orgId={session.user.orgId} report={report} />
+      <MemberReportPrintSheet orgDisplayName={orgSettings.displayName} report={report} />
     </>
   );
 }

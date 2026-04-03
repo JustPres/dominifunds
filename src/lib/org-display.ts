@@ -1,7 +1,3 @@
-const ORG_DISPLAY_NAME_MAP: Record<string, string> = {
-  BSIT: "Dominixode",
-};
-
 export function getOrgDisplayName(orgId?: string | null, fallback = "Organization") {
   const normalizedOrgId = orgId?.trim();
 
@@ -9,5 +5,15 @@ export function getOrgDisplayName(orgId?: string | null, fallback = "Organizatio
     return fallback;
   }
 
-  return ORG_DISPLAY_NAME_MAP[normalizedOrgId] ?? normalizedOrgId;
+  return normalizedOrgId;
+}
+
+export function normalizeOrgDisplayName(displayName?: string | null, fallback = "Organization") {
+  const normalizedDisplayName = displayName?.trim();
+
+  if (!normalizedDisplayName) {
+    return fallback;
+  }
+
+  return normalizedDisplayName;
 }

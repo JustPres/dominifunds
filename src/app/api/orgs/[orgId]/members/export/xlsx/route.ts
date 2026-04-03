@@ -10,7 +10,7 @@ import {
   parseMemberReportFilterStatus,
   parseMemberReportView,
 } from "@/lib/member-report";
-import { getOrgDisplayName } from "@/lib/org-display";
+import { resolveOrganizationSettings } from "@/lib/org-settings";
 
 function toBodyBytes(value: ArrayBuffer | Uint8Array) {
   return value instanceof ArrayBuffer ? new Uint8Array(value) : Uint8Array.from(value);
@@ -33,10 +33,11 @@ export async function GET(
     sectionId: searchParams.get("sectionId") || undefined,
     view: parseMemberReportView(searchParams.get("view")),
   });
+  const orgSettings = await resolveOrganizationSettings(params.orgId);
 
   const workbook = new Workbook();
   const sheet = workbook.addWorksheet("Members Report");
-  const orgDisplayName = getOrgDisplayName(params.orgId, params.orgId);
+  const orgDisplayName = orgSettings.displayName;
 
   sheet.mergeCells("A1:G1");
   sheet.getCell("A1").value = "DominiFunds Members Payment Standing Report";
@@ -104,7 +105,7 @@ export async function GET(
   return new Response(workbookBytes, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="members-report-${params.orgId}-${fileDate}.xlsx"`,
+      "Content-Disposition": `attachment; filename="members-report-${orgDisplayName.replace(/[^a-z0-9-]+/gi, "-")}-${fileDate}.xlsx"`,
       "Cache-Control": "no-store",
     },
   });

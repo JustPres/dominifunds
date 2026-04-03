@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { useSession, signOut } from "next-auth/react";
 import { LogOut, ShieldCheck } from "lucide-react";
+import { getOrganizationSettings } from "@/lib/api/org-settings";
 import { getOrgDisplayName } from "@/lib/org-display";
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -16,7 +18,14 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         .toUpperCase()
     : "ST";
   const roleLabel = session?.user?.role === "OFFICER" ? "Officer" : "Student";
-  const orgDisplayName = getOrgDisplayName(session?.user?.orgId);
+  const orgId = session?.user?.orgId;
+  const { data: orgSettings } = useQuery({
+    queryKey: ["org-settings", orgId],
+    enabled: !!orgId,
+    queryFn: () => getOrganizationSettings(orgId as string),
+    staleTime: 60_000,
+  });
+  const orgDisplayName = orgSettings?.displayName ?? getOrgDisplayName(orgId);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(161,33,36,0.07),_transparent_24%),linear-gradient(180deg,#f8f3ee_0%,#f4ede7_44%,#f7f3ee_100%)] text-[#241a1a]">

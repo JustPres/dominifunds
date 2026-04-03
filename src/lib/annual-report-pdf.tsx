@@ -1,7 +1,6 @@
 import React from "react";
 import { Document, Page, StyleSheet, Text, View, type DocumentProps } from "@react-pdf/renderer";
 import type { ReportData } from "@/lib/annual-report";
-import { getOrgDisplayName } from "@/lib/org-display";
 
 const currencyFormatter = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -161,18 +160,16 @@ function formatMoney(value: number) {
 }
 
 export function AnnualReportPdfDocument({
-  orgId,
+  orgDisplayName,
   year,
   generatedAt,
   report,
 }: {
-  orgId: string;
+  orgDisplayName: string;
   year: number;
   generatedAt: string;
   report: ReportData;
 }): React.ReactElement<DocumentProps> {
-  const orgDisplayName = getOrgDisplayName(orgId, orgId);
-
   return (
     <Document
       title={`${orgDisplayName} Annual Report ${year}`}

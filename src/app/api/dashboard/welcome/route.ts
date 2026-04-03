@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getActiveFundWhere } from "@/lib/fund-lifecycle";
-import { getOrgDisplayName } from "@/lib/org-display";
+import { resolveOrganizationSettings } from "@/lib/org-settings";
 import prisma from "@/lib/prisma";
 import { getActiveUserWhere } from "@/lib/user-lifecycle";
 
@@ -29,9 +29,10 @@ export async function GET() {
   const collectionRate = totalExpected > 0
     ? Math.round(((totalCollected._sum.amount || 0) / totalExpected) * 100)
     : 0;
+  const orgSettings = await resolveOrganizationSettings(orgId);
 
   return NextResponse.json({
-    orgName: getOrgDisplayName(orgId),
+    orgName: orgSettings.displayName,
     memberCount,
     collectionRate,
   });

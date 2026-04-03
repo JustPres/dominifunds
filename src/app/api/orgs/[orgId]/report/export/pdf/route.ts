@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import { getAnnualReportData } from "@/lib/annual-report";
 import { AnnualReportPdfDocument } from "@/lib/annual-report-pdf";
 import { getAuthorizedOfficerSession } from "@/lib/organization-auth";
-import { getOrgDisplayName } from "@/lib/org-display";
+import { resolveOrganizationSettings } from "@/lib/org-settings";
 
 function toBodyBytes(value: ArrayBuffer | Uint8Array) {
   return value instanceof ArrayBuffer ? new Uint8Array(value) : Uint8Array.from(value);
@@ -26,10 +26,11 @@ export async function GET(
   const year = parseInt(searchParams.get("year") || new Date().getFullYear().toString(), 10);
   const report = await getAnnualReportData(params.orgId, year);
   const generatedAt = new Date().toISOString();
+  const orgSettings = await resolveOrganizationSettings(params.orgId);
 
   const buffer = await renderToBuffer(
     AnnualReportPdfDocument({
-      orgId: params.orgId,
+      orgDisplayName: orgSettings.displayName,
       year,
       generatedAt,
       report,
@@ -37,7 +38,7 @@ export async function GET(
   );
   const pdfBytes = toBodyBytes(buffer);
   const fileDate = generatedAt.split("T")[0];
-  const filenameOrg = getOrgDisplayName(params.orgId, params.orgId).replace(/[^a-z0-9-]+/gi, "-");
+  const filenameOrg = orgSettings.displayName.replace(/[^a-z0-9-]+/gi, "-");
 
   return new Response(pdfBytes, {
     headers: {

@@ -13,26 +13,28 @@ const navLinks = [
   { href: "/dashboard/transactions", label: "Transactions", icon: "solar:transfer-horizontal-bold" },
   { href: "/dashboard/fund-types", label: "Fund Types", icon: "solar:folder-with-files-bold" },
   { href: "/dashboard/annual-report", label: "Annual Report", icon: "solar:chart-2-bold" },
+  { href: "/dashboard/settings", label: "Settings", icon: "solar:settings-bold" },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ orgDisplayName }: { orgDisplayName: string }) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 z-30 flex h-screen w-[220px] flex-col bg-[#3D0808] font-body">
-      {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 pt-6 pb-5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#a12124]">
-          <span className="font-display text-sm font-bold tracking-tight text-white">
+    <aside className="fixed left-0 top-0 z-30 flex h-screen w-[220px] flex-col bg-[var(--dashboard-sidebar-bg)] font-body">
+      <div className="flex items-center gap-2.5 px-5 pb-5 pt-6">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--dashboard-logo-bg)]">
+          <span className="font-display text-sm font-bold tracking-tight text-[var(--dashboard-logo-text)]">
             DF
           </span>
         </div>
-        <span className="font-display text-[13px] font-bold tracking-wide text-white/90">
-          DOMINIFUNDS
-        </span>
+        <div className="min-w-0">
+          <p className="truncate font-display text-[12px] font-bold tracking-[0.18em] text-[var(--dashboard-sidebar-text)]">
+            DominiFunds
+          </p>
+          <p className="truncate text-[11px] text-[var(--dashboard-sidebar-muted)]">{orgDisplayName}</p>
+        </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-2">
         {navLinks.map((link) => {
           const isActive =
@@ -46,14 +48,16 @@ export default function Sidebar() {
               href={link.href}
               className={`group flex items-center gap-2.5 rounded-r-lg py-2 pl-3 pr-2 text-[13px] transition-all ${
                 isActive
-                  ? "border-l-[3px] border-[#a12124] bg-white/[0.08] font-semibold text-white"
-                  : "border-l-[3px] border-transparent text-white/50 hover:bg-white/[0.05] hover:text-white/70"
+                  ? "border-l-[3px] border-[var(--dashboard-sidebar-active-border)] bg-[var(--dashboard-sidebar-active-bg)] font-semibold text-[var(--dashboard-sidebar-text)]"
+                  : "border-l-[3px] border-transparent text-[var(--dashboard-sidebar-muted)] hover:bg-[var(--dashboard-sidebar-hover-bg)] hover:text-[var(--dashboard-sidebar-text)]"
               }`}
             >
               <Icon
                 icon={link.icon}
                 className={`h-[18px] w-[18px] shrink-0 ${
-                  isActive ? "text-[#a12124]" : "text-white/40 group-hover:text-white/60"
+                  isActive
+                    ? "text-[var(--dashboard-sidebar-active-icon)]"
+                    : "text-[var(--dashboard-sidebar-muted)] group-hover:text-[var(--dashboard-sidebar-text)]"
                 }`}
               />
               {link.label}
@@ -62,12 +66,11 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Logout Footer */}
-      <div className="border-t border-white/[0.08] p-4 text-center">
+      <div className="border-t border-white/10 p-4 text-center">
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           title="Sign out"
-          className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-semibold text-white/50 transition-colors hover:bg-white/[0.05] hover:text-white/90"
+          className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-semibold text-[var(--dashboard-sidebar-muted)] transition-colors hover:bg-[var(--dashboard-sidebar-hover-bg)] hover:text-[var(--dashboard-sidebar-text)]"
         >
           <Icon icon="solar:logout-2-bold" className="h-4 w-4" />
           Sign Out
